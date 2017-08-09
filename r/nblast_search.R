@@ -2,20 +2,20 @@
 args = commandArgs(trailingOnly=TRUE)
 
 if (length(args) < 2) stop("At least two argument must be supplied.", call.=FALSE)
-imagefile = commandArgs(trailingOnly=TRUE)[1]
-nlibpath  = commandArgs(trailingOnly=TRUE)[2]
+imagefile = args[1]
+nlibpath  = args[2]
 
 if (length(args) >= 3) {
-	outputdir = commandArgs(trailingOnly=TRUE)[3]
+	outputdir = args[3]
 } else {
-	outputdir = paste(imagefile, ".nblast", sep="")	
+	outputdir = dirname(imagefile)
 }
 if (!dir.exists(outputdir)) {
     dir.create(outputdir, FALSE)
 }
 
 if (length(args) >= 4) {
-	resultnum = strtoi(commandArgs(trailingOnly=TRUE)[4])
+	resultnum = strtoi(args[4])
 	if (is.na(resultnum)) resultnum = 10
 } else {
   resultnum = 10
@@ -43,17 +43,12 @@ if (length(sorted) <= resultnum) {
   results = sorted[1:resultnum]
   slist = scores[1:resultnum]
 }
-open3d()
 
 cat("Writing results...\n")
-for (i in results) {
-	plot3d(i)
-  ofname = paste(names(i), ".obj", sep = "")
-	writeOBJ(file.path(outputdir, ofname))
-	cat(paste(opath, "\n", sep = ""))
-	clear3d()
-}
+swczipname = paste(basename(imagefile), ".nblust.zip", sep="")
+rlistname  = paste(basename(imagefile), ".nblust.txt", sep="")
 
-write.table(slist, file.path(outputdir, "results.txt"), sep=",", quote=F, col.names=F, row.names=T)
+write.neurons(results, dir=swczipname, files=names(results), format='swc')
+write.table(slist, file.path(outputdir, rlistname), sep=",", quote=F, col.names=F, row.names=T)
 
 cat("Done\n")
