@@ -27,6 +27,8 @@ public:
 	wxString GetNlibPath() { return m_nlib_path; }
 	void SetOutDir(wxString path) { m_out_dir = path; }
 	wxString GetOutDir() { return m_out_dir; }
+	void SetFileName(wxString name) { m_ofname = name; }
+	wxString GetFileName() { return m_ofname; }
 
 	wxString GetPID() { return m_pid; }
 
@@ -34,6 +36,7 @@ public:
 	void SaveConfigFile();
 
 	bool runNBLAST();
+	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname);
 
 	void OnTimer(wxTimerEvent& event);
 
@@ -41,6 +44,7 @@ private:
 	wxString m_R_path;
 	wxString m_out_dir;
 	wxString m_nlib_path;
+	wxString m_ofname;
 	wxTimer m_timer;
 	wxStopWatch m_watch;
 	wxString m_pid;

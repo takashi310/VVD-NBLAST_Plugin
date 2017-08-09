@@ -4,6 +4,7 @@
 #include "VRenderFrame.h"
 #include "wx/process.h"
 #include "wx/mstream.h"
+#include "wx/filename.h"
 #include "compatibility.h"
 
 IMPLEMENT_DYNAMIC_CLASS(NBLASTGuiPlugin, wxObject)
@@ -27,6 +28,57 @@ NBLASTGuiPlugin::~NBLASTGuiPlugin()
 
 bool NBLASTGuiPlugin::runNBLAST()
 {
+
+	return runNBLAST(m_R_path, m_nlib_path, m_out_dir, m_ofname);
+}
+
+bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname)
+{
+	if (rpath.IsEmpty() || nlibpath.IsEmpty() || outdir.IsEmpty() || ofname.IsEmpty())
+		return false;
+	
+	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
+	if (!vframe) return false;
+
+	VolumeData *vd = vframe->GetCurSelVol();
+	if (!vd) return false;
+
+#ifdef _WIN32
+	wchar_t slash = L'\\';
+#else
+	wchar_t slash = L'/';
+#endif
+
+	wxString tempvdpath = wxStandardPaths::Get().GetTempDir() + slash + "vvdnbtmpv.nrrd";
+	vd->Save(tempvdpath, 2, false, true, false, false); 
+
+	m_R_path = rpath;
+	m_nlib_path = nlibpath;
+	m_out_dir = outdir;
+	m_ofname = ofname;
+
+	wxString rscript;
+#ifdef _WIN32
+	wxString expath = wxStandardPaths::Get().GetExecutablePath();
+	expath = expath.BeforeLast(slash, NULL);
+	rscript = expath + "\\nblast_search.R";
+	tempvdpath.Replace("\\", "\\\\");
+	m_nlib_path.Replace("\\", "\\\\");
+	m_out_dir.Replace("\\", "\\\\");
+	m_ofname.Replace("\\", "\\\\");
+#else
+	wxString expath = wxStandardPaths::Get().GetExecutablePath();
+	expath = expath.BeforeLast(slash, NULL);
+	rscript = expath + "/../Resources/nblast_search.R";
+#endif
+
+	wxString com = _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
+					_("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ");
+	wxExecuteEnv env;
+	wxString envpath;
+	wxGetEnv(_("PATH"), &envpath);
+	env.env["PATH"] = envpath;
+	wxExecute(com, wxEXEC_BLOCK, NULL, &env);
 
 	return true;
 }

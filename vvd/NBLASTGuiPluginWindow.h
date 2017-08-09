@@ -63,6 +63,7 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_RPicker,
 		ID_NB_NlibPicker,
 		ID_NB_OutputPicker,
+		ID_NB_OutFileText,
 		ID_SEND_EVENT_BUTTON,
 		ID_WaitTimer
 	};
@@ -114,6 +115,7 @@ private:
     wxFilePickerCtrl* m_RPickCtrl;
 	wxFilePickerCtrl* m_nlibPickCtrl;
 	wxDirPickerCtrl* m_outdirPickCtrl;
+	wxTextCtrl* m_ofnameTextCtrl;
 	NBLASTListCtrl* m_results;
 	wxButton* m_CommandButton;
 	wxTimer* m_wtimer;

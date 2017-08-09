@@ -221,12 +221,12 @@ NBLASTGuiPluginWindow::~NBLASTGuiPluginWindow()
 		if (m_nlibPickCtrl)
 		{
 			path = m_nlibPickCtrl->GetPath();
-			plugin->SetRPath(path);
+			plugin->SetNlibPath(path);
 		}
 		if (m_outdirPickCtrl)
 		{
 			path = m_outdirPickCtrl->GetPath();
-			plugin->SetRPath(path);
+			plugin->SetOutDir(path);
 		}
 
 		plugin->SaveConfigFile();
@@ -243,6 +243,7 @@ void NBLASTGuiPluginWindow::Init()
 	m_RPickCtrl = NULL;
 	m_nlibPickCtrl = NULL;
 	m_outdirPickCtrl = NULL;
+	m_ofnameTextCtrl = NULL;
 	m_CommandButton = NULL;
 	m_prg_diag = NULL;
 	m_waitingforR = false;
@@ -305,7 +306,18 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer3, 0, wxEXPAND);
 
-	wxButton* m_CommandButton = new wxButton( this, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
+	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
+	st = new wxStaticText(this, 0, "Output File Name:", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
+	m_ofnameTextCtrl = new wxTextCtrl( this, ID_NB_OutFileText, "", wxDefaultPosition, wxSize(200, -1));
+	sizer4->Add(5, 10);
+	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+	sizer4->Add(5, 10);
+	sizer4->Add(m_ofnameTextCtrl, 1, wxRIGHT);
+	sizer4->Add(10, 10);
+	itemBoxSizer2->Add(5, 5);
+	itemBoxSizer2->Add(sizer4, 0, wxALIGN_LEFT);
+    
+	m_CommandButton = new wxButton( this, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(m_CommandButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
@@ -318,9 +330,10 @@ void NBLASTGuiPluginWindow::CreateControls()
 	this->SetSizer(itemBoxSizer2);
 	this->Layout();
 
+	////@end NBLASTGuiPluginWindow content construction
+
 	Thaw();
 	SetEvtHandlerEnabled(true);
-	////@end NBLASTGuiPluginWindow content construction
 
 	//m_wtimer->Start(50);
 }
@@ -333,6 +346,7 @@ void NBLASTGuiPluginWindow::EnableControls(bool enable)
 		if (m_nlibPickCtrl) m_nlibPickCtrl->Enable();
 		if (m_outdirPickCtrl) m_outdirPickCtrl->Enable();
 		if (m_results) m_results->Enable();
+		if (m_CommandButton) m_CommandButton->Enable();
 	}
 	else 
 	{
@@ -340,6 +354,7 @@ void NBLASTGuiPluginWindow::EnableControls(bool enable)
 		if (m_nlibPickCtrl) m_nlibPickCtrl->Disable();
 		if (m_outdirPickCtrl) m_outdirPickCtrl->Disable();
 		if (m_results) m_results->Disable();
+		if (m_CommandButton) m_CommandButton->Disable();
 	}
 }
 
@@ -396,14 +411,11 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 	wxString rpath = m_RPickCtrl->GetPath();
 	wxString nlibpath = m_nlibPickCtrl->GetPath();
 	wxString outdir = m_outdirPickCtrl->GetPath();
+	wxString ofname = m_ofnameTextCtrl->GetValue();
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 	if (plugin)
 	{
-		plugin->SetRPath(rpath);
-		plugin->SetNlibPath(nlibpath);
-		plugin->SetOutDir(outdir);
-		
-		plugin->runNBLAST();
+		plugin->runNBLAST(rpath, nlibpath, outdir, ofname);
 	}
 
 //	wxCommandEvent e(wxEVT_GUI_PLUGIN_INTEROP);
