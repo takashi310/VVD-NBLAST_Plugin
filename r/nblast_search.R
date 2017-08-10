@@ -54,6 +54,6 @@ swczipname = paste(outfname, ".zip", sep="")
 rlistname  = paste(outfname, ".txt", sep="")
 
 write.neurons(results, dir=file.path(outputdir,swczipname), files=names(results), format='swc', Force=T)
-write.table(slist, file.path(outputdir,rlistname), sep=",", quote=F, col.names=F, row.names=T)
+write.table(format(slist, digits=15), file.path(outputdir,rlistname), sep=",", quote=F, col.names=F, row.names=T)
 
 cat("Done\n")

@@ -39,10 +39,13 @@ NBLASTListCtrl::NBLASTListCtrl(
 	wxListItem itemCol;
 	itemCol.SetText("Name");
 	this->InsertColumn(0, itemCol);
-
+	
 	itemCol.SetText("Score");
+	itemCol.SetAlign(wxLIST_FORMAT_RIGHT);
 	this->InsertColumn(1, itemCol);
 
+	SetColumnWidth(0, 400);
+	SetColumnWidth(1, 130);
 }
 
 NBLASTListCtrl::~NBLASTListCtrl()
@@ -55,6 +58,9 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 	wxFileInputStream input(csvfilepath);
 	wxTextInputStream text(input, wxT("\t"), wxConvUTF8 );
 	SetEvtHandlerEnabled(false);
+
+	DeleteAllItems();
+
 	while(input.IsOk() && !input.Eof() )
 	{
 		wxString line = text.ReadLine();
@@ -73,10 +79,7 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 void NBLASTListCtrl::Append(wxString name, wxString score)
 {
 	long tmp = InsertItem(GetItemCount(), name);
-
 	SetItem(tmp, 1, score);
-	SetColumnWidth(0, wxLIST_AUTOSIZE);
-	SetColumnWidth(1, wxLIST_AUTOSIZE);
 }
 
 wxString NBLASTListCtrl::GetText(long item, int col)
@@ -154,6 +157,7 @@ BEGIN_EVENT_TABLE( NBLASTGuiPluginWindow, wxGuiPluginWindowBase )
 
 ////@begin NBLASTGuiPluginWindow event table entries
     EVT_BUTTON( ID_SEND_EVENT_BUTTON, NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick )
+	EVT_BUTTON( ID_RELOAD_RESULTS_BUTTON, NBLASTGuiPluginWindow::OnReloadResultsButtonClick )
 	EVT_CLOSE(NBLASTGuiPluginWindow::OnClose)
 ////@end NBLASTGuiPluginWindow event table entries
 
@@ -327,6 +331,21 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(m_results, 1, wxEXPAND);
 
+	wxBoxSizer *sizer5 = new wxBoxSizer(wxHORIZONTAL);
+	st = new wxStaticText(this, 0, "Result File:", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
+	m_resultPickCtrl = new wxFilePickerCtrl( this, ID_NB_ResultPicker, "", _("Choose a search result file"), "*.txt", wxDefaultPosition, wxSize(400, -1));
+	sizer5->Add(5, 10);
+	sizer5->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+	sizer5->Add(5, 10);
+	sizer5->Add(m_resultPickCtrl, 1, wxRIGHT|wxEXPAND);
+	sizer5->Add(10, 10);
+	itemBoxSizer2->Add(5, 5);
+	itemBoxSizer2->Add(sizer5, 0, wxEXPAND);
+
+	m_ReloadResultButton = new wxButton( this, ID_RELOAD_RESULTS_BUTTON, _("Reload Results"), wxDefaultPosition, wxDefaultSize, 0 );
+	itemBoxSizer2->Add(10, 5);
+	itemBoxSizer2->Add(m_ReloadResultButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
+
 	this->SetSizer(itemBoxSizer2);
 	this->Layout();
 
@@ -394,11 +413,18 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 	if (!info)
 		return;
 	int evid = info->id;
+	
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 
 	switch (evid)
 	{
 	case NB_OPEN_FILE:
-		
+		if (plugin && m_resultPickCtrl)
+		{
+			wxString str = wxString((char *)info->data);
+			wxString zip =  m_resultPickCtrl->GetPath().BeforeLast(L'.', NULL) + _(".zip");
+			plugin->LoadSWC(str, zip);
+		}
 		break;
 	default:
 		break;
@@ -416,11 +442,28 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 	if (plugin)
 	{
 		plugin->runNBLAST(rpath, nlibpath, outdir, ofname);
+
+		wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
+		if (wxFileExists(respath))
+		{
+			m_resultPickCtrl->SetPath(respath);
+			wxCommandEvent e;
+			OnReloadResultsButtonClick(e);
+		}
 	}
 
 //	wxCommandEvent e(wxEVT_GUI_PLUGIN_INTEROP);
 //	e.SetString(m_RPickCtrl->GetPath());
 //	GetPlugin()->GetEventHandler()->AddPendingEvent(e);
+
+    event.Skip();
+}
+
+void NBLASTGuiPluginWindow::OnReloadResultsButtonClick( wxCommandEvent& event )
+{
+	wxString respath = m_resultPickCtrl->GetPath();
+	
+	if (m_results) m_results->LoadResults(respath);
 
     event.Skip();
 }

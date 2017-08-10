@@ -2,9 +2,10 @@
 #include "NBLASTGuiPlugin.h"
 #include "NBLASTGuiPluginWindow.h"
 #include "VRenderFrame.h"
-#include "wx/process.h"
-#include "wx/mstream.h"
-#include "wx/filename.h"
+#include <wx/process.h>
+#include <wx/mstream.h>
+#include <wx/filename.h>
+#include <wx/zipstrm.h>
 #include "compatibility.h"
 
 IMPLEMENT_DYNAMIC_CLASS(NBLASTGuiPlugin, wxObject)
@@ -43,13 +44,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	VolumeData *vd = vframe->GetCurSelVol();
 	if (!vd) return false;
 
-#ifdef _WIN32
-	wchar_t slash = L'\\';
-#else
-	wchar_t slash = L'/';
-#endif
-
-	wxString tempvdpath = wxStandardPaths::Get().GetTempDir() + slash + "vvdnbtmpv.nrrd";
+	wxString tempvdpath = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.nrrd";
 	vd->Save(tempvdpath, 2, false, true, false, false); 
 
 	m_R_path = rpath;
@@ -60,7 +55,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	wxString rscript;
 #ifdef _WIN32
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
-	expath = expath.BeforeLast(slash, NULL);
+	expath = expath.BeforeLast(wxFILE_SEP_PATH, NULL);
 	rscript = expath + "\\nblast_search.R";
 	tempvdpath.Replace("\\", "\\\\");
 	m_nlib_path.Replace("\\", "\\\\");
@@ -68,7 +63,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_ofname.Replace("\\", "\\\\");
 #else
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
-	expath = expath.BeforeLast(slash, NULL);
+	expath = expath.BeforeLast(wxFILE_SEP_PATH, NULL);
 	rscript = expath + "/../Resources/nblast_search.R";
 #endif
 
@@ -78,7 +73,59 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	wxString envpath;
 	wxGetEnv(_("PATH"), &envpath);
 	env.env["PATH"] = envpath;
-	wxExecute(com, wxEXEC_BLOCK, NULL, &env);
+	wxExecute(com, wxEXEC_SYNC, NULL, &env);
+
+	return true;
+}
+
+bool NBLASTGuiPlugin::LoadSWC(wxString name, wxString swc_zip_path)
+{
+	wxFFileInputStream fis(swc_zip_path);
+	if (!fis.IsOk()) return false;
+
+	wxConvAuto conv;
+	wxZipInputStream zis(fis, conv);
+	if (!zis.IsOk()) return false;
+
+	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
+	if (!vframe) return false;
+
+	wxZipEntry *entry;
+	wxString ename = name;
+
+	if (ename.AfterLast(L'.') != wxT("swc"))
+		ename += wxT(".swc");
+
+	size_t esize = 0;
+	while (entry = zis.GetNextEntry())
+	{
+		if (ename == entry->GetName())
+		{
+			esize = entry->GetSize();
+			break;
+		}
+	}
+
+	if (esize <= 0) return false;
+
+	char *buff = new char[esize];
+	zis.Read(buff, esize);
+
+	wxString tempswcpath = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + ename;
+
+	wxFile tmpswc(tempswcpath, wxFile::write);
+
+	if (tmpswc.IsOpened())
+	{
+		tmpswc.Write(buff, esize);
+		tmpswc.Close();
+		wxArrayString arr;
+		arr.Add(tempswcpath);
+		vframe->LoadMeshes(arr);
+		wxRemoveFile(tempswcpath);
+	}
+
+	delete [] buff;
 
 	return true;
 }

@@ -37,6 +37,7 @@ public:
 
 	bool runNBLAST();
 	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname);
+	bool LoadSWC(wxString name, wxString swc_zip_path);
 
 	void OnTimer(wxTimerEvent& event);
 

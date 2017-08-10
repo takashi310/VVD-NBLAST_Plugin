@@ -32,10 +32,10 @@ public:
 
 	void Append(wxString name, wxString score);
 	wxString GetText(long item, int col);
-
-private:
+	
 	void LoadResults(wxString csvfilepath);
 
+private:
 	void OnSelect(wxListEvent &event);
 	void OnAct(wxListEvent &event);
 	void OnKeyDown(wxKeyEvent& event);
@@ -64,7 +64,9 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_NlibPicker,
 		ID_NB_OutputPicker,
 		ID_NB_OutFileText,
+		ID_NB_ResultPicker,
 		ID_SEND_EVENT_BUTTON,
+		ID_RELOAD_RESULTS_BUTTON,
 		ID_WaitTimer
 	};
 
@@ -89,6 +91,7 @@ public:
 
     /// wxEVT_COMMAND_BUTTON_CLICKED event handler for ID_SEND_EVENT_BUTTON
     void OnSENDEVENTBUTTONClick( wxCommandEvent& event );
+	void OnReloadResultsButtonClick( wxCommandEvent& event );
 
 	void OnClose(wxCloseEvent& event);
 
@@ -116,8 +119,10 @@ private:
 	wxFilePickerCtrl* m_nlibPickCtrl;
 	wxDirPickerCtrl* m_outdirPickCtrl;
 	wxTextCtrl* m_ofnameTextCtrl;
+	wxFilePickerCtrl* m_resultPickCtrl;
 	NBLASTListCtrl* m_results;
 	wxButton* m_CommandButton;
+	wxButton* m_ReloadResultButton;
 	wxTimer* m_wtimer;
 	wxProgressDialog* m_prg_diag;
 	bool m_waitingforR;
