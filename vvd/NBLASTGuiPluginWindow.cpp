@@ -157,6 +157,7 @@ BEGIN_EVENT_TABLE( NBLASTGuiPluginWindow, wxGuiPluginWindowBase )
 
 ////@begin NBLASTGuiPluginWindow event table entries
     EVT_BUTTON( ID_SEND_EVENT_BUTTON, NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick )
+	EVT_BUTTON( ID_SKELETONIZE_BUTTON, NBLASTGuiPluginWindow::OnSkeletonizeButtonClick )
 	EVT_BUTTON( ID_RELOAD_RESULTS_BUTTON, NBLASTGuiPluginWindow::OnReloadResultsButtonClick )
 	EVT_CLOSE(NBLASTGuiPluginWindow::OnClose)
 ////@end NBLASTGuiPluginWindow event table entries
@@ -321,9 +322,14 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer4, 0, wxALIGN_LEFT);
     
+	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
+	m_SkeletonizeButton = new wxButton( this, ID_SKELETONIZE_BUTTON, _("Skeletonize"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_CommandButton = new wxButton( this, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerb->Add(m_SkeletonizeButton);
+	sizerb->Add(75, 10);
+	sizerb->Add(m_CommandButton);
 	itemBoxSizer2->Add(10, 5);
-	itemBoxSizer2->Add(m_CommandButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
+	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
 	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(500, 500));
 	m_results->addObserver(this);
@@ -441,6 +447,15 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 	if (plugin)
 	{
+		if (!wxFileExists(rpath))
+			wxMessageBox("Could not find Rscript.exe", "NBLAST Plugin");
+		if (!wxFileExists(nlibpath))
+			wxMessageBox("Could not find a target neuron file", "NBLAST Plugin");
+		if (outdir.IsEmpty())
+			wxMessageBox("Set an output directory", "NBLAST Plugin");
+		if (ofname.IsEmpty())
+			wxMessageBox("Set an output file name", "NBLAST Plugin");
+
 		plugin->runNBLAST(rpath, nlibpath, outdir, ofname);
 
 		wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
@@ -457,6 +472,12 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 //	GetPlugin()->GetEventHandler()->AddPendingEvent(e);
 
     event.Skip();
+}
+
+void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	if (plugin) plugin->skeletonizeMask();
 }
 
 void NBLASTGuiPluginWindow::OnReloadResultsButtonClick( wxCommandEvent& event )

@@ -35,7 +35,7 @@ bool NBLASTGuiPlugin::runNBLAST()
 
 bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname)
 {
-	if (rpath.IsEmpty() || nlibpath.IsEmpty() || outdir.IsEmpty() || ofname.IsEmpty())
+	if (!wxFileExists(rpath) || !wxFileExists(nlibpath) || outdir.IsEmpty() || ofname.IsEmpty())
 		return false;
 	
 	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
@@ -45,7 +45,10 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	if (!vd) return false;
 
 	wxString tempvdpath = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.nrrd";
-	vd->Save(tempvdpath, 2, false, true, false, false); 
+	vd->Save(tempvdpath, 2, false, true, true, false); 
+	wxString maskfname = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.msk";
+	if (wxFileExists(maskfname))
+		wxRenameFile(maskfname, tempvdpath, true);
 
 	m_R_path = rpath;
 	m_nlib_path = nlibpath;
@@ -74,6 +77,12 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	wxGetEnv(_("PATH"), &envpath);
 	env.env["PATH"] = envpath;
 	wxExecute(com, wxEXEC_SYNC, NULL, &env);
+
+	return true;
+}
+
+bool NBLASTGuiPlugin::OnRun(wxString options)
+{
 
 	return true;
 }
@@ -126,6 +135,26 @@ bool NBLASTGuiPlugin::LoadSWC(wxString name, wxString swc_zip_path)
 	}
 
 	delete [] buff;
+
+	return true;
+}
+
+bool NBLASTGuiPlugin::skeletonizeMask()
+{
+	wxString fi_name = _("Fiji Interface");
+
+	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
+	if (!vframe) return false;
+
+	if (!vframe->PluginExists(fi_name))
+	{
+		wxMessageBox("ERROR: Could not found Fiji interface", "NBLAST Plugin");
+		return false;
+	}
+
+	//bool shown = vframe->IsShownPluginWindow(fi_name);
+	vframe->CreatePluginWindow(fi_name, true);
+	vframe->RunPlugin(fi_name, "NBLAST Skeletonize,true");
 
 	return true;
 }

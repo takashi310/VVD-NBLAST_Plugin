@@ -20,6 +20,7 @@ public:
 	virtual wxWindow * CreatePanel(wxWindow * parent);
 	virtual void OnInit();
 	virtual void OnDestroy();
+	virtual bool OnRun(wxString options);
 
 	void SetRPath(wxString path) { m_R_path = path; }
 	wxString GetRPath() { return m_R_path; }
@@ -38,6 +39,7 @@ public:
 	bool runNBLAST();
 	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname);
 	bool LoadSWC(wxString name, wxString swc_zip_path);
+	bool skeletonizeMask();
 
 	void OnTimer(wxTimerEvent& event);
 

@@ -66,6 +66,7 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_OutFileText,
 		ID_NB_ResultPicker,
 		ID_SEND_EVENT_BUTTON,
+		ID_SKELETONIZE_BUTTON,
 		ID_RELOAD_RESULTS_BUTTON,
 		ID_WaitTimer
 	};
@@ -91,7 +92,10 @@ public:
 
     /// wxEVT_COMMAND_BUTTON_CLICKED event handler for ID_SEND_EVENT_BUTTON
     void OnSENDEVENTBUTTONClick( wxCommandEvent& event );
+	
 	void OnReloadResultsButtonClick( wxCommandEvent& event );
+
+	void OnSkeletonizeButtonClick( wxCommandEvent& event );
 
 	void OnClose(wxCloseEvent& event);
 
@@ -121,6 +125,7 @@ private:
 	wxTextCtrl* m_ofnameTextCtrl;
 	wxFilePickerCtrl* m_resultPickCtrl;
 	NBLASTListCtrl* m_results;
+	wxButton* m_SkeletonizeButton;
 	wxButton* m_CommandButton;
 	wxButton* m_ReloadResultButton;
 	wxTimer* m_wtimer;
