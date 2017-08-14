@@ -1,29 +1,10 @@
-//
-// Multi_OtsuThreshold_.java
-//
-// Algorithm: PS.Liao, TS.Chen, and PC. Chung,
-//            Journal of Information Science and Engineering, vol 17, 713-727 (2001)
-// 
-// Coding   : Yasunari Tosa (ytosa@att.net)
-// Date     : Feb. 19th, 2005
-//
 import ij.*;
 import ij.process.*;
 import ij.gui.*;
-import ij.*;
 import ij.io.*;
-import java.io.File;
-import java.io.FileReader;
-import java.io.BufferedReader;
-import java.io.FileWriter;
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 
 import ij.plugin.PlugIn;
-import java.awt.*;
 import ij.plugin.filter.*;
-import java.util.*;
 
 public class NBLAST_Skeletonize implements PlugInFilter 
 {
