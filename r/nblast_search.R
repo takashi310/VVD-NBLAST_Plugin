@@ -32,13 +32,13 @@ library(nat.nblast)
 library(nat)
 
 cat("Loading neuron libraries...\n")
-dp = read.neurons(nlibpath, pattern = 'rda$')
+dp = read.neuronlistfh(nlibpath, localdir=dirname(nlibpath))
 
 cat("Loading images...\n")
 img = read.im3d(imagefile)
 
 cat("Running NBLAST...\n")
-scores = nblast(dotprops(img), dp, normalised=T)
+scores = nblast(dotprops(img), dp, normalised=T, .progress='text')
 scores = sort(scores, dec=T)
 
 if (length(scores) <= resultnum) {
