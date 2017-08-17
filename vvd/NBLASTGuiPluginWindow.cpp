@@ -277,10 +277,17 @@ void NBLASTGuiPluginWindow::CreateControls()
 	////@begin NBLASTGuiPluginWindow content construction
 	wxBoxSizer* itemBoxSizer2 = new wxBoxSizer(wxVERTICAL);
 	wxStaticText *st;
+#ifdef _WIN32
+    int stsize = 120;
+#else
+    int stsize = 130;
+    if (rpath.IsEmpty() && wxFileExists("/Library/Frameworks/R.framework/Resources/bin/Rscript"))
+        rpath = _("/Library/Frameworks/R.framework/Resources/bin/Rscript");
+#endif
 
 	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Rscript.exe:", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
-	m_RPickCtrl = new wxFilePickerCtrl( this, ID_NB_RPicker, rpath, _("Set a path to Rscript.exe"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
+	st = new wxStaticText(this, 0, "Rscript:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_RPickCtrl = new wxFilePickerCtrl( this, ID_NB_RPicker, rpath, _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
 	sizer1->Add(5, 10);
 	sizer1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer1->Add(5, 10);
@@ -290,7 +297,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer1, 0, wxEXPAND);
 
 	wxBoxSizer *sizer2 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
+	st = new wxStaticText(this, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_nlibPickCtrl = new wxFilePickerCtrl( this, ID_NB_RPicker, nlibpath, _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxSize(400, -1));
 	sizer2->Add(5, 10);
 	sizer2->Add(st, 0, wxALIGN_CENTER_VERTICAL);
@@ -301,7 +308,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer2, 0, wxEXPAND);
 
 	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Output Directory:", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
+	st = new wxStaticText(this, 0, "Output Directory:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_outdirPickCtrl = new wxDirPickerCtrl( this, ID_NB_OutputPicker, outdir, _("Choose an output directory"), wxDefaultPosition, wxSize(400, -1));
 	sizer3->Add(5, 10);
 	sizer3->Add(st, 0, wxALIGN_CENTER_VERTICAL);
@@ -312,7 +319,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer3, 0, wxEXPAND);
 
 	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Output File Name:", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
+	st = new wxStaticText(this, 0, "Output File Name:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_ofnameTextCtrl = new wxTextCtrl( this, ID_NB_OutFileText, "", wxDefaultPosition, wxSize(200, -1));
 	sizer4->Add(5, 10);
 	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
@@ -331,14 +338,17 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
+    wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
 	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(500, 500));
 	m_results->addObserver(this);
-
+    sizerl->Add(5,10);
+    sizerl->Add(m_results, 1, wxEXPAND);
+    sizerl->Add(5,10);
 	itemBoxSizer2->Add(5, 5);
-	itemBoxSizer2->Add(m_results, 1, wxEXPAND);
+	itemBoxSizer2->Add(sizerl, 1, wxEXPAND);
 
 	wxBoxSizer *sizer5 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Result File:", wxDefaultPosition, wxSize(120, -1), wxALIGN_RIGHT);
+	st = new wxStaticText(this, 0, "Result File:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_resultPickCtrl = new wxFilePickerCtrl( this, ID_NB_ResultPicker, "", _("Choose a search result file"), "*.txt", wxDefaultPosition, wxSize(400, -1));
 	sizer5->Add(5, 10);
 	sizer5->Add(st, 0, wxALIGN_CENTER_VERTICAL);

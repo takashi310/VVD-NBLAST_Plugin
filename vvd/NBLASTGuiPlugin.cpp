@@ -64,19 +64,25 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_nlib_path.Replace("\\", "\\\\");
 	m_out_dir.Replace("\\", "\\\\");
 	m_ofname.Replace("\\", "\\\\");
+    
+    wxString com = _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
+    _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ");
+    wxExecuteEnv env;
+    wxString envpath;
+    wxGetEnv(_("PATH"), &envpath);
+    env.env["PATH"] = envpath;
+    wxExecute(com, wxEXEC_SYNC, NULL, &env);
 #else
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
 	expath = expath.BeforeLast(wxFILE_SEP_PATH, NULL);
 	rscript = expath + "/../Resources/nblast_search.R";
+    wxString term = expath + "/../Resources/term.sh";
+    wxString com = _("bash \'")+term+_("\' ") + _("\"") + _("\'")+m_R_path+_("\' ") + _("\'")+rscript+_("\' ") + _("\'")+tempvdpath+_("\' ") +
+    _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ")+_("\"");
+    wxExecute(com, wxEXEC_SYNC);
+    wxString act = "osascript -e 'tell application \"System Events\" to set frontmost of the first process whose unix id is "+wxString::Format("%lu", wxGetProcessId())+" to true'";
+    wxExecute(act, wxEXEC_HIDE_CONSOLE|wxEXEC_ASYNC);
 #endif
-
-	wxString com = _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
-					_("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ");
-	wxExecuteEnv env;
-	wxString envpath;
-	wxGetEnv(_("PATH"), &envpath);
-	env.env["PATH"] = envpath;
-	wxExecute(com, wxEXEC_SYNC, NULL, &env);
 
 	return true;
 }
@@ -154,7 +160,7 @@ bool NBLASTGuiPlugin::skeletonizeMask()
 
 	//bool shown = vframe->IsShownPluginWindow(fi_name);
 	vframe->CreatePluginWindow(fi_name, true);
-	vframe->RunPlugin(fi_name, "NBLAST Skeletonize,true");
+	vframe->RunPlugin(fi_name, "NBLAST Skeletonize,true,false");
 
 	return true;
 }
