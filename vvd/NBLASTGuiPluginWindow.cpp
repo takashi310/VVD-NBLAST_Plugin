@@ -60,7 +60,7 @@ NBLASTListCtrl::NBLASTListCtrl(
 	SetColumnWidth(1, 100);
 	SetColumnWidth(2, 150);
 	SetColumnWidth(3, 150);
-	SetColumnWidth(4, 130);
+	SetColumnWidth(4, 150);
 }
 
 NBLASTListCtrl::~NBLASTListCtrl()
@@ -93,8 +93,14 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath, wxString dbdir)
 			{
 				w = img.GetWidth();
 				h = img.GetHeight();
-				SetColumnWidth(2, w+2);
-				SetColumnWidth(3, w);
+                
+#ifdef _DARWIN
+                SetColumnWidth(2, w+8);
+                SetColumnWidth(3, w+8);
+#else
+                SetColumnWidth(2, w+2);
+                SetColumnWidth(3, w+2);
+#endif
 				show_image = true;
 			}
 		}
@@ -165,6 +171,7 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath, wxString dbdir)
 	}
 
 	SetEvtHandlerEnabled(true);
+    Update();
 }
 
 void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
@@ -441,7 +448,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
-	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(570, 500));
+	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(590, 500));
 	m_results->addObserver(this);
     sizerl->Add(5,10);
     sizerl->Add(m_results, 1, wxEXPAND);
