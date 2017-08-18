@@ -30,10 +30,10 @@ public:
 		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
 	~NBLASTListCtrl();
 
-	void Append(wxString name, wxString score);
+	void Append(wxString name, wxString score, int mipid=-1, int swcid=-1);
 	wxString GetText(long item, int col);
 	
-	void LoadResults(wxString csvfilepath);
+	void LoadResults(wxString csvfilepath, wxString dbdir);
 
 private:
 	void OnSelect(wxListEvent &event);
@@ -43,12 +43,16 @@ private:
 	void OnMouse(wxMouseEvent& event);
 	void OnScroll(wxScrollWinEvent& event);
 	void OnScroll(wxMouseEvent& event);
+	void OnColBeginDrag(wxListEvent& event);
 
 	DECLARE_EVENT_TABLE()
 protected: //Possible TODO
 	wxSize GetSizeAvailableForScrollTarget(const wxSize& size) {
 		return size - GetEffectiveMinSize();
 	}
+
+private:
+	wxImageList *m_images;
 };
 
 

@@ -21,6 +21,7 @@
 BEGIN_EVENT_TABLE(NBLASTListCtrl, wxListCtrl)
 	EVT_LIST_ITEM_ACTIVATED(wxID_ANY, NBLASTListCtrl::OnAct)
 	EVT_LIST_ITEM_SELECTED(wxID_ANY, NBLASTListCtrl::OnSelect)
+	EVT_LIST_COL_BEGIN_DRAG(wxID_ANY, NBLASTListCtrl::OnColBeginDrag)
 	EVT_KEY_DOWN(NBLASTListCtrl::OnKeyDown)
 	EVT_KEY_UP(NBLASTListCtrl::OnKeyUp)
 	EVT_MOUSE_EVENTS(NBLASTListCtrl::OnMouse)
@@ -36,24 +37,38 @@ NBLASTListCtrl::NBLASTListCtrl(
 	long style) :
 	wxListCtrl(parent, id, pos, size, style)
 {
+	m_images = NULL;
+
 	wxListItem itemCol;
-	itemCol.SetText("Name");
+	itemCol.SetText("");
 	this->InsertColumn(0, itemCol);
+
+	itemCol.SetText("Name");
+	this->InsertColumn(1, itemCol);
+
+	itemCol.SetText("Preview");
+	this->InsertColumn(2, itemCol);
+
+	itemCol.SetText("Color-MIP");
+	this->InsertColumn(3, itemCol);
 	
 	itemCol.SetText("Score");
 	itemCol.SetAlign(wxLIST_FORMAT_RIGHT);
-	this->InsertColumn(1, itemCol);
+	this->InsertColumn(4, itemCol);
 
-	SetColumnWidth(0, 400);
-	SetColumnWidth(1, 130);
+	SetColumnWidth(0, 0);
+	SetColumnWidth(1, 100);
+	SetColumnWidth(2, 150);
+	SetColumnWidth(3, 150);
+	SetColumnWidth(4, 130);
 }
 
 NBLASTListCtrl::~NBLASTListCtrl()
 {
-
+	wxDELETE(m_images);
 }
 
-void NBLASTListCtrl::LoadResults(wxString csvfilepath)
+void NBLASTListCtrl::LoadResults(wxString csvfilepath, wxString dbdir)
 {
 	wxFileInputStream input(csvfilepath);
 	wxTextInputStream text(input, wxT("\t"), wxConvUTF8 );
@@ -61,6 +76,31 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 
 	DeleteAllItems();
 
+	bool show_image = false;
+	int w = 0, h = 0;
+
+	wxString thumbdir = dbdir + wxFILE_SEP_PATH + _("MIP_thumb");
+	wxString prevdir = dbdir + wxFILE_SEP_PATH + _("swc_thumb");
+
+	wxDir dir1(thumbdir);
+	if (dir1.IsOpened())
+	{
+		wxString fimgpath;
+		if (dir1.GetFirst(&fimgpath, "*.png"))
+		{
+			wxBitmap img(_(thumbdir+wxFILE_SEP_PATH+fimgpath), wxBITMAP_TYPE_PNG);
+			if (img.IsOk())
+			{
+				w = img.GetWidth();
+				h = img.GetHeight();
+				SetColumnWidth(2, w+2);
+				SetColumnWidth(3, w);
+				show_image = true;
+			}
+		}
+	}
+
+	wxArrayString names, scores;
 	while(input.IsOk() && !input.Eof() )
 	{
 		wxString line = text.ReadLine();
@@ -71,15 +111,77 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 			con.Add(tkz.GetNextToken());
 
 		if (con.Count() >= 2)
-			Append(con[0], con[1]);
+		{
+			names.Add(con[0]);
+			scores.Add(con[1]);
+		}
 	}
+
+	if (show_image)
+	{
+		if (m_images) wxDELETE(m_images);
+		m_images = new wxImageList(w, h, false);
+		wxString imgpath;
+		
+		char *dummy8 = new (std::nothrow) char[w*h];
+		memset((void*)dummy8, 0, sizeof(char)*w*h);
+		wxBitmap dummy(dummy8, w, h);
+		m_images->Add(dummy, wxBITMAP_TYPE_BMP);
+
+		int imgcount = 0;
+		for (int i = 0; i < names.GetCount(); i++)
+		{
+			int mipid = 0;
+			int swcid = 0;
+			if (wxFileExists(thumbdir+wxFILE_SEP_PATH+names[i]+_(".png")))
+			{
+				wxBitmap img(thumbdir+wxFILE_SEP_PATH+names[i]+_(".png"), wxBITMAP_TYPE_PNG);
+				if (img.IsOk())
+				{
+					imgcount++;
+					m_images->Add(img, wxBITMAP_TYPE_PNG);
+					mipid = imgcount;
+				}
+			}
+			if (wxFileExists(prevdir+wxFILE_SEP_PATH+names[i]+_(".png")))
+			{
+				wxBitmap img(prevdir+wxFILE_SEP_PATH+names[i]+_(".png"), wxBITMAP_TYPE_PNG);
+				if (img.IsOk())
+				{
+					imgcount++;
+					m_images->Add(img, wxBITMAP_TYPE_PNG);
+					swcid = imgcount;
+				}
+			}
+
+			Append(names[i], scores[i], mipid, swcid);
+		}
+		SetImageList(m_images, wxIMAGE_LIST_SMALL);
+	}
+	else
+	{
+		for (int i = 0; i < names.GetCount(); i++)
+			Append(names[i], scores[i]);
+	}
+
 	SetEvtHandlerEnabled(true);
 }
 
-void NBLASTListCtrl::Append(wxString name, wxString score)
+void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
 {
-	long tmp = InsertItem(GetItemCount(), name);
-	SetItem(tmp, 1, score);
+	if ( event.GetColumn() == 0 )
+    {
+        event.Veto();
+    }
+}
+
+void NBLASTListCtrl::Append(wxString name, wxString score, int mipid, int swcid)
+{
+	long tmp = InsertItem(GetItemCount(), _(""));
+	SetItem(tmp, 1, name);
+	SetItem(tmp, 2, _(""), swcid);
+	SetItem(tmp, 3, _(""), mipid);
+	SetItem(tmp, 4, score);
 }
 
 wxString NBLASTListCtrl::GetText(long item, int col)
@@ -112,7 +214,7 @@ void NBLASTListCtrl::OnAct(wxListEvent &event)
 		wxLIST_STATE_SELECTED);
 	if (item != -1)
 	{
-		wxString name = GetText(item, 0);
+		wxString name = GetText(item, 1);
 		notifyAll(NB_OPEN_FILE, name.ToStdString().c_str(), name.ToStdString().length()+1);
 	}
 }
@@ -339,7 +441,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
-	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(500, 500));
+	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(570, 500));
 	m_results->addObserver(this);
     sizerl->Add(5,10);
     sizerl->Add(m_results, 1, wxEXPAND);
@@ -494,7 +596,7 @@ void NBLASTGuiPluginWindow::OnReloadResultsButtonClick( wxCommandEvent& event )
 {
 	wxString respath = m_resultPickCtrl->GetPath();
 	
-	if (m_results) m_results->LoadResults(respath);
+	if (m_results) m_results->LoadResults(respath, m_nlibPickCtrl->GetPath().BeforeLast(wxFILE_SEP_PATH, NULL));
 
     event.Skip();
 }
