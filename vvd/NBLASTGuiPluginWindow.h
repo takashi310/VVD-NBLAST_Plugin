@@ -6,6 +6,9 @@
 #include <wx/progdlg.h>
 #include <wx/listctrl.h>
 #include <wx/stopwatch.h>
+#include <wx/splitter.h>
+#include <wx/sizer.h>
+#include <wx/stopwatch.h>
 #include "utility.h"
 
 #define SYMBOL_NBLASTGuiPluginWindow_STYLE wxTAB_TRAVERSAL
@@ -14,7 +17,28 @@
 #define SYMBOL_NBLASTGuiPluginWindow_SIZE wxSize(400, 300)
 #define SYMBOL_NBLASTGuiPluginWindow_POSITION wxDefaultPosition
 
-class NBLASTListCtrl: public wxListCtrl, public Notifier
+class wxImagePanel : public wxPanel
+{
+	wxImage  *m_image;
+	wxBitmap *m_resized;
+	int m_w, m_h;
+
+public:
+	wxImagePanel(wxWindow* parent, int w, int h);
+	~wxImagePanel();
+	void SetImage(wxString file, wxBitmapType format);
+	wxSize CalcImageSizeKeepAspectRatio(int w, int h);
+
+	void OnDraw(wxPaintEvent & evt);
+	void PaintNow();
+	void OnSize(wxSizeEvent& event);
+	void Render(wxDC& dc);
+	void OnEraseBackground(wxEraseEvent& event);
+
+	DECLARE_EVENT_TABLE()
+};
+
+class NBLASTListCtrl : public wxListCtrl, public Notifier
 {
 	enum
 	{
@@ -44,7 +68,7 @@ private:
 	void OnScroll(wxScrollWinEvent& event);
 	void OnScroll(wxMouseEvent& event);
 	void OnColBeginDrag(wxListEvent& event);
-
+	
 	DECLARE_EVENT_TABLE()
 protected: //Possible TODO
 	wxSize GetSizeAvailableForScrollTarget(const wxSize& size) {
@@ -53,6 +77,7 @@ protected: //Possible TODO
 
 private:
 	wxImageList *m_images;
+	wxStopWatch m_watch;
 };
 
 
@@ -68,6 +93,7 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_NlibPicker,
 		ID_NB_OutputPicker,
 		ID_NB_OutFileText,
+		ID_NB_ResultNumText,
 		ID_NB_ResultPicker,
 		ID_SEND_EVENT_BUTTON,
 		ID_SKELETONIZE_BUTTON,
@@ -123,12 +149,16 @@ public:
 
 private:
 
+	wxSplitterWindow* m_splitterWindow;
     wxFilePickerCtrl* m_RPickCtrl;
 	wxFilePickerCtrl* m_nlibPickCtrl;
 	wxDirPickerCtrl* m_outdirPickCtrl;
 	wxTextCtrl* m_ofnameTextCtrl;
+	wxTextCtrl* m_rnumTextCtrl;
 	wxFilePickerCtrl* m_resultPickCtrl;
 	NBLASTListCtrl* m_results;
+	wxImagePanel* m_swcImagePanel;
+	wxImagePanel* m_mipImagePanel;
 	wxButton* m_SkeletonizeButton;
 	wxButton* m_CommandButton;
 	wxButton* m_ReloadResultButton;

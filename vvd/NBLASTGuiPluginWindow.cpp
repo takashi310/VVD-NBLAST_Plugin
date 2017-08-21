@@ -16,6 +16,120 @@
 #include <wx/wfstream.h>
 #include <wx/txtstrm.h>
 #include <wx/tokenzr.h>
+#include <wx/dcbuffer.h>
+#include <wx/valnum.h>
+
+BEGIN_EVENT_TABLE(wxImagePanel, wxPanel)
+EVT_PAINT(wxImagePanel::OnDraw)
+EVT_SIZE(wxImagePanel::OnSize)
+END_EVENT_TABLE()
+
+wxImagePanel::wxImagePanel(wxWindow* parent, int w, int h) :
+wxPanel(parent)
+{
+	m_image = NULL;
+	m_resized = NULL;
+	m_w = -1;
+	m_h = -1;
+	SetBackgroundStyle(wxBG_STYLE_PAINT);
+}
+
+wxImagePanel::~wxImagePanel()
+{
+	wxDELETE(m_image);
+	wxDELETE(m_resized);
+}
+
+void wxImagePanel::SetImage(wxString file, wxBitmapType format)
+{
+	wxDELETE(m_image);
+	wxDELETE(m_resized);
+	
+	if (!wxFileExists(file))
+		return;
+
+	m_image = new wxImage(file, format);
+	if (m_image && m_image->IsOk())
+		m_resized = new wxBitmap();
+	else
+		wxDELETE(m_image);
+}
+
+void wxImagePanel::OnDraw(wxPaintEvent & evt)
+{
+	wxAutoBufferedPaintDC dc(this);
+	Render(dc);
+}
+
+void wxImagePanel::PaintNow()
+{
+	wxClientDC dc(this);
+	Render(dc);
+}
+
+wxSize wxImagePanel::CalcImageSizeKeepAspectRatio(int w, int h)
+{
+	if (!m_image || !m_image->IsOk())
+		return wxSize(-1, -1);
+
+	int orgw = m_image->GetWidth();
+	int orgh = m_image->GetHeight();
+
+	double nw = w;
+	double nh = (double)w*((double)orgh/(double)orgw);
+	if (nh <= h)
+		return wxSize((int)nw, (int)nh);
+
+	nw = (double)h*((double)orgw/(double)orgh);
+	nh = h;
+	return wxSize((int)nw, (int)nh);
+}
+
+void wxImagePanel::Render(wxDC& dc)
+{
+	dc.Clear();
+
+	int neww, newh;
+	this->GetSize( &neww, &newh );
+
+	wxSize ns = CalcImageSizeKeepAspectRatio(neww, newh);
+	if (ns.GetWidth() <= 0 || ns.GetHeight() <= 0)
+		return;
+
+	int posx = neww > ns.GetWidth() ? (neww-ns.GetWidth())/2 : 0;
+	int posy = newh > ns.GetHeight() ? (newh-ns.GetHeight())/2 : 0;
+
+	if( ns.GetWidth() != m_w || ns.GetHeight() != m_h )
+	{
+		wxDELETE(m_resized);
+		m_resized = new wxBitmap( m_image->Scale( ns.GetWidth(), ns.GetHeight(), wxIMAGE_QUALITY_HIGH));
+		if (m_resized && m_resized->IsOk())
+		{
+			m_w = ns.GetWidth();
+			m_h = ns.GetHeight();
+			dc.DrawBitmap(*m_resized, posx, posy, false);
+		}
+	}
+	else
+	{
+		if (m_resized && !m_resized->IsOk())
+			m_resized = new wxBitmap( m_image->Scale( ns.GetWidth(), ns.GetHeight(), wxIMAGE_QUALITY_HIGH));
+
+		if (m_resized && m_resized->IsOk())
+			dc.DrawBitmap(*m_resized, posx, posy, false);
+	}
+}
+
+void wxImagePanel::OnEraseBackground(wxEraseEvent& event)
+{
+	event.Skip();
+}
+
+void wxImagePanel::OnSize(wxSizeEvent& event)
+{
+	Refresh(true);
+	event.Skip();
+}
 
 
 BEGIN_EVENT_TABLE(NBLASTListCtrl, wxListCtrl)
@@ -25,8 +139,7 @@ BEGIN_EVENT_TABLE(NBLASTListCtrl, wxListCtrl)
 	EVT_KEY_DOWN(NBLASTListCtrl::OnKeyDown)
 	EVT_KEY_UP(NBLASTListCtrl::OnKeyUp)
 	EVT_MOUSE_EVENTS(NBLASTListCtrl::OnMouse)
-	EVT_SCROLLWIN(NBLASTListCtrl::OnScroll)
-	EVT_MOUSEWHEEL(NBLASTListCtrl::OnScroll)
+
 END_EVENT_TABLE()
 
 NBLASTListCtrl::NBLASTListCtrl(
@@ -172,6 +285,10 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath, wxString dbdir)
 
 	SetEvtHandlerEnabled(true);
     Update();
+
+	long item = GetNextItem(-1);
+	if (item != -1)
+		SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
 }
 
 void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
@@ -210,6 +327,7 @@ void NBLASTListCtrl::OnSelect(wxListEvent &event)
 	if (item != -1)
 	{
 		wxString name = GetText(item, 1);
+		notifyAll(NB_SET_IMAGE, name.ToStdString().c_str(), name.ToStdString().length()+1);
 	}
 }
 
@@ -226,16 +344,6 @@ void NBLASTListCtrl::OnAct(wxListEvent &event)
 	}
 }
 
-void NBLASTListCtrl::OnKeyDown(wxKeyEvent& event)
-{
-	//event.Skip();
-}
-
-void NBLASTListCtrl::OnKeyUp(wxKeyEvent& event)
-{
-	event.Skip();
-}
-
 void NBLASTListCtrl::OnMouse(wxMouseEvent &event)
 {
 	event.Skip();
@@ -250,6 +358,18 @@ void NBLASTListCtrl::OnScroll(wxMouseEvent& event)
 {
 	event.Skip(true);
 }
+
+void NBLASTListCtrl::OnKeyDown(wxKeyEvent& event)
+{
+	event.Skip();
+}
+
+void NBLASTListCtrl::OnKeyUp(wxKeyEvent& event)
+{
+	event.Skip();
+}
+
+
 
 /*
  * NBLASTGuiPluginWindow type definition
@@ -345,6 +465,7 @@ NBLASTGuiPluginWindow::~NBLASTGuiPluginWindow()
 
 		plugin->SaveConfigFile();
 	}
+
 }
 
 
@@ -354,11 +475,14 @@ NBLASTGuiPluginWindow::~NBLASTGuiPluginWindow()
 
 void NBLASTGuiPluginWindow::Init()
 {
+	m_splitterWindow = NULL;
 	m_RPickCtrl = NULL;
 	m_nlibPickCtrl = NULL;
 	m_outdirPickCtrl = NULL;
 	m_ofnameTextCtrl = NULL;
 	m_CommandButton = NULL;
+	m_swcImagePanel = NULL;
+	m_mipImagePanel = NULL;
 	m_prg_diag = NULL;
 	m_waitingforR = false;
 	m_wtimer = new wxTimer(this, ID_WaitTimer);
@@ -371,20 +495,31 @@ void NBLASTGuiPluginWindow::Init()
 
 void NBLASTGuiPluginWindow::CreateControls()
 {    
-	wxString rpath, nlibpath, outdir;
+	wxString rpath, nlibpath, outdir, rnum;
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 	if (plugin)
 	{
 		rpath = plugin->GetRPath();
 		nlibpath = plugin->GetNlibPath();
 		outdir = plugin->GetOutDir();
+		rnum = plugin->GetResultNum();
 	}
 
 	SetEvtHandlerEnabled(false);
 	Freeze();
 
+	m_splitterWindow = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxSize(-1, -1));
+	wxPanel* nbpanel = new wxPanel(m_splitterWindow, wxID_ANY);
+	wxPanel* imgpanel = new wxPanel(m_splitterWindow, wxID_ANY);
+
 	////@begin NBLASTGuiPluginWindow content construction
+	wxBoxSizer* itemBoxSizer = new wxBoxSizer(wxHORIZONTAL);
 	wxBoxSizer* itemBoxSizer2 = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer* itemBoxSizer2_1 = new wxBoxSizer(wxVERTICAL);
+
+	wxIntegerValidator<unsigned int> vald_int;
+	vald_int.SetMin(1);
+
 	wxStaticText *st;
 #ifdef _WIN32
     int stsize = 120;
@@ -395,8 +530,8 @@ void NBLASTGuiPluginWindow::CreateControls()
 #endif
 
 	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Rscript:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_RPickCtrl = new wxFilePickerCtrl( this, ID_NB_RPicker, rpath, _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
+	st = new wxStaticText(nbpanel, 0, "Rscript:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_RPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_RPicker, rpath, _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
 	sizer1->Add(5, 10);
 	sizer1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer1->Add(5, 10);
@@ -406,8 +541,8 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer1, 0, wxEXPAND);
 
 	wxBoxSizer *sizer2 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_nlibPickCtrl = new wxFilePickerCtrl( this, ID_NB_RPicker, nlibpath, _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxSize(400, -1));
+	st = new wxStaticText(nbpanel, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_nlibPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_RPicker, nlibpath, _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxSize(400, -1));
 	sizer2->Add(5, 10);
 	sizer2->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer2->Add(5, 10);
@@ -417,8 +552,8 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer2, 0, wxEXPAND);
 
 	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Output Directory:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_outdirPickCtrl = new wxDirPickerCtrl( this, ID_NB_OutputPicker, outdir, _("Choose an output directory"), wxDefaultPosition, wxSize(400, -1));
+	st = new wxStaticText(nbpanel, 0, "Output Directory:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_outdirPickCtrl = new wxDirPickerCtrl( nbpanel, ID_NB_OutputPicker, outdir, _("Choose an output directory"), wxDefaultPosition, wxSize(400, -1));
 	sizer3->Add(5, 10);
 	sizer3->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer3->Add(5, 10);
@@ -428,19 +563,25 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer3, 0, wxEXPAND);
 
 	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Output File Name:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_ofnameTextCtrl = new wxTextCtrl( this, ID_NB_OutFileText, "", wxDefaultPosition, wxSize(200, -1));
+	st = new wxStaticText(nbpanel, 0, "Output File Name:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_ofnameTextCtrl = new wxTextCtrl( nbpanel, ID_NB_OutFileText, "", wxDefaultPosition, wxSize(200, -1));
 	sizer4->Add(5, 10);
 	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer4->Add(5, 10);
 	sizer4->Add(m_ofnameTextCtrl, 1, wxRIGHT);
-	sizer4->Add(10, 10);
+	sizer4->Add(20, 10);
+	st = new wxStaticText(nbpanel, 0, "Show Top", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_rnumTextCtrl = new wxTextCtrl( nbpanel, ID_NB_ResultNumText, rnum, wxDefaultPosition, wxSize(30, -1), wxTE_RIGHT, vald_int);
+	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+	sizer4->Add(5, 10);
+	sizer4->Add(m_rnumTextCtrl, 0, wxRIGHT);
+
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer4, 0, wxALIGN_LEFT);
     
 	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
-	m_SkeletonizeButton = new wxButton( this, ID_SKELETONIZE_BUTTON, _("Skeletonize"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_CommandButton = new wxButton( this, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_SkeletonizeButton = new wxButton( nbpanel, ID_SKELETONIZE_BUTTON, _("Skeletonize"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_CommandButton = new wxButton( nbpanel, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerb->Add(m_SkeletonizeButton);
 	sizerb->Add(75, 10);
 	sizerb->Add(m_CommandButton);
@@ -448,7 +589,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
-	m_results = new NBLASTListCtrl(this, wxID_ANY, wxDefaultPosition, wxSize(590, 500));
+	m_results = new NBLASTListCtrl(nbpanel, wxID_ANY, wxDefaultPosition, wxSize(590, 500));
 	m_results->addObserver(this);
     sizerl->Add(5,10);
     sizerl->Add(m_results, 1, wxEXPAND);
@@ -457,8 +598,8 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizerl, 1, wxEXPAND);
 
 	wxBoxSizer *sizer5 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(this, 0, "Result File:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_resultPickCtrl = new wxFilePickerCtrl( this, ID_NB_ResultPicker, "", _("Choose a search result file"), "*.txt", wxDefaultPosition, wxSize(400, -1));
+	st = new wxStaticText(nbpanel, 0, "Result File:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	m_resultPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_ResultPicker, "", _("Choose a search result file"), "*.txt", wxDefaultPosition, wxSize(400, -1));
 	sizer5->Add(5, 10);
 	sizer5->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer5->Add(5, 10);
@@ -467,11 +608,27 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer5, 0, wxEXPAND);
 
-	m_ReloadResultButton = new wxButton( this, ID_RELOAD_RESULTS_BUTTON, _("Reload Results"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_ReloadResultButton = new wxButton( nbpanel, ID_RELOAD_RESULTS_BUTTON, _("Reload Results"), wxDefaultPosition, wxDefaultSize, 0 );
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(m_ReloadResultButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
-	this->SetSizer(itemBoxSizer2);
+	m_swcImagePanel = new wxImagePanel( imgpanel, 500, 250);
+	m_mipImagePanel = new wxImagePanel( imgpanel, 500, 250);
+	itemBoxSizer2_1->Add(5, 5);
+	itemBoxSizer2_1->Add(m_swcImagePanel, 1, wxEXPAND);
+	itemBoxSizer2_1->Add(5, 5);
+	itemBoxSizer2_1->Add(m_mipImagePanel, 1, wxEXPAND);
+
+	nbpanel->SetSizer(itemBoxSizer2);
+	imgpanel->SetSizer(itemBoxSizer2_1);
+
+	nbpanel->SetMinSize(wxSize(610,750));
+	imgpanel->SetMinSize(wxSize(510,750));
+	
+	m_splitterWindow->SplitVertically(nbpanel, imgpanel);
+
+	itemBoxSizer->Add(m_splitterWindow, 1, wxEXPAND); 
+	this->SetSizer(itemBoxSizer);
 	this->Layout();
 
 	////@end NBLASTGuiPluginWindow content construction
@@ -551,6 +708,19 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 			plugin->LoadSWC(str, zip);
 		}
 		break;
+	case NB_SET_IMAGE:
+		if (plugin && m_nlibPickCtrl)
+		{
+			wxString imgpath1 = m_nlibPickCtrl->GetPath().BeforeLast(wxFILE_SEP_PATH, NULL) + wxFILE_SEP_PATH +
+				_("swc_prev") + wxFILE_SEP_PATH + wxString((char *)info->data) + _(".png");
+			m_swcImagePanel->SetImage(imgpath1, wxBITMAP_TYPE_PNG);
+			m_swcImagePanel->Refresh();
+			
+			wxString imgpath2 = m_nlibPickCtrl->GetPath().BeforeLast(wxFILE_SEP_PATH, NULL) + wxFILE_SEP_PATH +
+				_("MIP") + wxFILE_SEP_PATH + wxString((char *)info->data) + _(".png");
+			m_mipImagePanel->SetImage(imgpath2, wxBITMAP_TYPE_PNG);
+			m_mipImagePanel->Refresh();
+		}
 	default:
 		break;
 	}
@@ -563,6 +733,8 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 	wxString nlibpath = m_nlibPickCtrl->GetPath();
 	wxString outdir = m_outdirPickCtrl->GetPath();
 	wxString ofname = m_ofnameTextCtrl->GetValue();
+	wxString rnum = m_rnumTextCtrl->GetValue();
+	long lval = -1;
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 	if (plugin)
 	{
@@ -574,8 +746,10 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 			wxMessageBox("Set an output directory", "NBLAST Plugin");
 		if (ofname.IsEmpty())
 			wxMessageBox("Set an output file name", "NBLAST Plugin");
+		if (!rnum.ToLong(&lval))
+			wxMessageBox("Invalid number", "NBLAST Plugin");
 
-		plugin->runNBLAST(rpath, nlibpath, outdir, ofname);
+		plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum);
 
 		wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
 		if (wxFileExists(respath))

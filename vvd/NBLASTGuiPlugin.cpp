@@ -10,7 +10,6 @@
 
 IMPLEMENT_DYNAMIC_CLASS(NBLASTGuiPlugin, wxObject)
 
-
 NBLASTGuiPlugin::NBLASTGuiPlugin()
 	: wxGuiPluginBase(NULL, NULL), m_R_process(NULL)
 {
@@ -30,12 +29,12 @@ NBLASTGuiPlugin::~NBLASTGuiPlugin()
 bool NBLASTGuiPlugin::runNBLAST()
 {
 
-	return runNBLAST(m_R_path, m_nlib_path, m_out_dir, m_ofname);
+	return runNBLAST(m_R_path, m_nlib_path, m_out_dir, m_ofname, m_rnum);
 }
 
-bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname)
+bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum)
 {
-	if (!wxFileExists(rpath) || !wxFileExists(nlibpath) || outdir.IsEmpty() || ofname.IsEmpty())
+	if (!wxFileExists(rpath) || !wxFileExists(nlibpath) || outdir.IsEmpty() || ofname.IsEmpty() || rnum.IsEmpty())
 		return false;
 	
 	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
@@ -54,6 +53,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_nlib_path = nlibpath;
 	m_out_dir = outdir;
 	m_ofname = ofname;
+	m_rnum = rnum;
 
 	wxString rscript;
 #ifdef _WIN32
@@ -66,7 +66,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_ofname.Replace("\\", "\\\\");
     
     wxString com = _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
-    _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ");
+    _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ") + _("\"")+m_rnum+_("\" ");
     wxExecuteEnv env;
     wxString envpath;
     wxGetEnv(_("PATH"), &envpath);
@@ -78,7 +78,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	rscript = expath + "/../Resources/nblast_search.R";
     wxString term = expath + "/../Resources/term.sh";
     wxString com = _("bash \'")+term+_("\' ") + _("\"") + _("\'")+m_R_path+_("\' ") + _("\'")+rscript+_("\' ") + _("\'")+tempvdpath+_("\' ") +
-    _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ")+_("\"");
+    _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ") + _("\'")+m_rnum+_("\' ") +_("\"");
     wxExecute(com, wxEXEC_SYNC);
     wxString act = "osascript -e 'tell application \"System Events\" to set frontmost of the first process whose unix id is "+wxString::Format("%lu", wxGetProcessId())+" to true'";
     wxExecute(act, wxEXEC_HIDE_CONSOLE|wxEXEC_ASYNC);
@@ -219,6 +219,11 @@ void NBLASTGuiPlugin::LoadConfigFile()
 				m_nlib_path = str;
 			if (fconfig.Read("output_dir", &str))
 				m_out_dir = str;
+			
+			if (fconfig.Read("rnum", &str))
+				m_rnum = str;
+			else
+				m_rnum = "10";
 		}
 	}
 }
@@ -230,6 +235,7 @@ void NBLASTGuiPlugin::SaveConfigFile()
 	fconfig.Write("R_path", m_R_path);
 	fconfig.Write("neuronlib_path", m_nlib_path);
 	fconfig.Write("output_dir", m_out_dir);
+	fconfig.Write("rnum", m_rnum);
 
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
 	expath = expath.BeforeLast(GETSLASH(),NULL);

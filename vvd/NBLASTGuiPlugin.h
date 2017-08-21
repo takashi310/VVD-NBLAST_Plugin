@@ -6,6 +6,7 @@
 #define NB_PLUGIN_VERSION "1.00"
 
 #define NB_OPEN_FILE 1
+#define NB_SET_IMAGE 2
 
 class NBLASTGuiPlugin : public wxGuiPluginBase, public Notifier
 {
@@ -30,6 +31,8 @@ public:
 	wxString GetOutDir() { return m_out_dir; }
 	void SetFileName(wxString name) { m_ofname = name; }
 	wxString GetFileName() { return m_ofname; }
+	void SetResultNum(wxString num) { m_rnum = num; }
+	wxString GetResultNum() { return m_rnum; }
 
 	wxString GetPID() { return m_pid; }
 
@@ -37,7 +40,7 @@ public:
 	void SaveConfigFile();
 
 	bool runNBLAST();
-	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname);
+	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum);
 	bool LoadSWC(wxString name, wxString swc_zip_path);
 	bool skeletonizeMask();
 
@@ -48,6 +51,7 @@ private:
 	wxString m_out_dir;
 	wxString m_nlib_path;
 	wxString m_ofname;
+	wxString m_rnum;
 	wxTimer m_timer;
 	wxStopWatch m_watch;
 	wxString m_pid;
