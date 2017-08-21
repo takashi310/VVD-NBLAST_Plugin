@@ -510,7 +510,9 @@ void NBLASTGuiPluginWindow::CreateControls()
 
 	m_splitterWindow = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxSize(-1, -1));
 	wxPanel* nbpanel = new wxPanel(m_splitterWindow, wxID_ANY);
+	nbpanel->SetWindowStyle(wxBORDER_SIMPLE);
 	wxPanel* imgpanel = new wxPanel(m_splitterWindow, wxID_ANY);
+	imgpanel->SetWindowStyle(wxBORDER_SIMPLE);
 
 	////@begin NBLASTGuiPluginWindow content construction
 	wxBoxSizer* itemBoxSizer = new wxBoxSizer(wxHORIZONTAL);
