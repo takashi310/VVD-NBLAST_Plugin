@@ -485,6 +485,7 @@ void NBLASTGuiPluginWindow::Init()
 	m_mipImagePanel = NULL;
 	m_prg_diag = NULL;
 	m_waitingforR = false;
+	m_waitingforFiji = false;
 	m_wtimer = new wxTimer(this, ID_WaitTimer);
 }
 
@@ -565,7 +566,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer3, 0, wxEXPAND);
 
 	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Output File Name:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	st = new wxStaticText(nbpanel, 0, "Project Name:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_ofnameTextCtrl = new wxTextCtrl( nbpanel, ID_NB_OutFileText, "", wxDefaultPosition, wxSize(200, -1));
 	sizer4->Add(5, 10);
 	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
@@ -588,10 +589,11 @@ void NBLASTGuiPluginWindow::CreateControls()
 	m_SkeletonizeButton = new wxButton( nbpanel, ID_SKELETONIZE_BUTTON, _("Skeletonize"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_CommandButton = new wxButton( nbpanel, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerb->Add(m_SkeletonizeButton);
-	sizerb->Add(75, 10);
+//	sizerb->Add(75, 10);
 	sizerb->Add(m_CommandButton);
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
+	m_SkeletonizeButton->Hide();
 
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
 	m_results = new NBLASTListCtrl(nbpanel, wxID_ANY, wxDefaultPosition, wxSize(590, 500));
@@ -637,6 +639,9 @@ void NBLASTGuiPluginWindow::CreateControls()
 	this->Layout();
 
 	////@end NBLASTGuiPluginWindow content construction
+
+	plugin->GetEventHandler()->Bind(wxEVT_GUI_PLUGIN_INTEROP, 
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnInteropMessageReceived), this);
 
 	Thaw();
 	SetEvtHandlerEnabled(true);
@@ -744,25 +749,50 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 	if (plugin)
 	{
 		if (!wxFileExists(rpath))
-			wxMessageBox("Could not find Rscript.exe", "NBLAST Plugin");
+			{wxMessageBox("Could not find Rscript binary", "NBLAST Plugin"); event.Skip(); return;}
 		if (!wxFileExists(nlibpath))
-			wxMessageBox("Could not find a target neuron file", "NBLAST Plugin");
+			{wxMessageBox("Could not find a target neuron file", "NBLAST Plugin");; event.Skip(); return;}
 		if (outdir.IsEmpty())
-			wxMessageBox("Set an output directory", "NBLAST Plugin");
+			{wxMessageBox("Set an output directory", "NBLAST Plugin");; event.Skip(); return;}
 		if (ofname.IsEmpty())
-			wxMessageBox("Set an output file name", "NBLAST Plugin");
+			{wxMessageBox("Set a project name", "NBLAST Plugin");; event.Skip(); return;}
 		if (!rnum.ToLong(&lval))
-			wxMessageBox("Invalid number", "NBLAST Plugin");
+			{wxMessageBox("Invalid number", "NBLAST Plugin");; event.Skip(); return;}
 
-		plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum);
-
-		wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
-		if (wxFileExists(respath))
+		VRenderFrame *vframe = (VRenderFrame *)plugin->GetVVDMainFrame();
+		if (vframe)
 		{
-			m_resultPickCtrl->SetPath(respath);
-			wxCommandEvent e;
-			OnReloadResultsButtonClick(e);
+			VolumeData *vd = vframe->GetCurSelVol();
+			if (vd)
+			{
+				if (vd->GetName().Find("skeleton") == wxNOT_FOUND)
+				{
+					if (plugin->skeletonizeMask())
+					{
+						plugin->skeletonizeMask();
+						plugin->SetRPath(rpath);
+						plugin->SetNlibPath(nlibpath);
+						plugin->SetOutDir(outdir);
+						plugin->SetFileName(ofname);
+						plugin->SetResultNum(rnum);
+						m_waitingforFiji = true;
+					}
+				}
+				else
+				{
+					plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum);
+
+					wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
+					if (wxFileExists(respath))
+					{
+						m_resultPickCtrl->SetPath(respath);
+						wxCommandEvent e;
+						OnReloadResultsButtonClick(e);
+					}
+				}
+			}
 		}
+
 	}
 
 //	wxCommandEvent e(wxEVT_GUI_PLUGIN_INTEROP);
@@ -790,4 +820,34 @@ void NBLASTGuiPluginWindow::OnReloadResultsButtonClick( wxCommandEvent& event )
 void NBLASTGuiPluginWindow::OnClose(wxCloseEvent& event)
 {
 	event.Skip();
+}
+
+void NBLASTGuiPluginWindow::OnInteropMessageReceived(wxCommandEvent & event)
+{
+	if (m_waitingforFiji)
+	{
+		NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+		if (!plugin) return;
+
+		wxString message = event.GetString();
+		wxStringTokenizer tkz(message, wxT(","));
+
+		wxArrayString args;
+		while(tkz.HasMoreTokens())
+			args.Add(tkz.GetNextToken());
+
+		if (args[0] == _("Fiji Interface") && args[1] == _("finished") && args[2] == _("NBLAST Skeletonize"))
+		{
+			m_waitingforFiji = false;
+			plugin->runNBLAST();
+
+			wxString respath = plugin->GetOutDir() + wxFILE_SEP_PATH + plugin->GetFileName() + _(".txt");
+			if (wxFileExists(respath))
+			{
+				m_resultPickCtrl->SetPath(respath);
+				wxCommandEvent e;
+				OnReloadResultsButtonClick(e);
+			}
+		}
+	}
 }

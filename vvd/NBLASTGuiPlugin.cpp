@@ -158,8 +158,12 @@ bool NBLASTGuiPlugin::skeletonizeMask()
 		return false;
 	}
 
-	//bool shown = vframe->IsShownPluginWindow(fi_name);
-	vframe->CreatePluginWindow(fi_name, true);
+	if (!vframe->IsCreatedPluginWindow(fi_name))
+	{
+		vframe->CreatePluginWindow(fi_name);
+		vframe->ToggleVisibilityPluginWindow(fi_name, false);
+	}
+
 	vframe->RunPlugin(fi_name, "NBLAST Skeletonize,true,false");
 
 	return true;

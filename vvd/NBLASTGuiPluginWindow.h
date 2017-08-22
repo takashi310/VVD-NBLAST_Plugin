@@ -120,14 +120,11 @@ public:
 
 ////@begin NBLASTGuiPluginWindow event handler declarations
 
-    /// wxEVT_COMMAND_BUTTON_CLICKED event handler for ID_SEND_EVENT_BUTTON
     void OnSENDEVENTBUTTONClick( wxCommandEvent& event );
-	
 	void OnReloadResultsButtonClick( wxCommandEvent& event );
-
 	void OnSkeletonizeButtonClick( wxCommandEvent& event );
-
 	void OnClose(wxCloseEvent& event);
+	void OnInteropMessageReceived(wxCommandEvent & event);
 
 ////@end NBLASTGuiPluginWindow event handler declarations
 
@@ -165,6 +162,7 @@ private:
 	wxTimer* m_wtimer;
 	wxProgressDialog* m_prg_diag;
 	bool m_waitingforR;
+	bool m_waitingforFiji;
 };
 
 #endif
