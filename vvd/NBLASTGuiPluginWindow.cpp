@@ -572,11 +572,14 @@ void NBLASTGuiPluginWindow::CreateControls()
 	sizer4->Add(5, 10);
 	sizer4->Add(m_ofnameTextCtrl, 1, wxRIGHT);
 	sizer4->Add(20, 10);
-	st = new wxStaticText(nbpanel, 0, "Show Top", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
+	st = new wxStaticText(nbpanel, 0, "Save Top", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_rnumTextCtrl = new wxTextCtrl( nbpanel, ID_NB_ResultNumText, rnum, wxDefaultPosition, wxSize(30, -1), wxTE_RIGHT, vald_int);
 	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer4->Add(5, 10);
 	sizer4->Add(m_rnumTextCtrl, 0, wxRIGHT);
+	sizer4->Add(5, 10);
+	st = new wxStaticText(nbpanel, 0, "Neurons", wxDefaultPosition, wxSize(50, -1), wxALIGN_LEFT);
+	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer4, 0, wxALIGN_LEFT);
