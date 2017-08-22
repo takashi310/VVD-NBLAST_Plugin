@@ -240,7 +240,9 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath, wxString dbdir)
 	{
 		if (m_images) wxDELETE(m_images);
 		m_images = new wxImageList(w, h, false);
-		wxString imgpath;
+        SetImageList(m_images, wxIMAGE_LIST_SMALL);
+		
+        wxString imgpath;
 		
 		char *dummy8 = new (std::nothrow) char[w*h];
 		memset((void*)dummy8, 0, sizeof(char)*w*h);
@@ -275,7 +277,6 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath, wxString dbdir)
 
 			Append(names[i], scores[i], mipid, swcid);
 		}
-		SetImageList(m_images, wxIMAGE_LIST_SMALL);
 	}
 	else
 	{
