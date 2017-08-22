@@ -769,7 +769,6 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 				{
 					if (plugin->skeletonizeMask())
 					{
-						plugin->skeletonizeMask();
 						plugin->SetRPath(rpath);
 						plugin->SetNlibPath(nlibpath);
 						plugin->SetOutDir(outdir);
@@ -778,7 +777,7 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 						m_waitingforFiji = true;
 					}
 				}
-				else
+				else if (!m_waitingforFiji)
 				{
 					plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum);
 
