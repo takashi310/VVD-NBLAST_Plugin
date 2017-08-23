@@ -19,7 +19,9 @@
 
 class wxImagePanel : public wxPanel
 {
-	wxImage  *m_image;
+	wxImage  m_image;
+	wxImage  *m_orgimage;
+	wxImage  m_olimage;
 	wxBitmap *m_resized;
 	int m_w, m_h;
 
@@ -27,6 +29,9 @@ public:
 	wxImagePanel(wxWindow* parent, int w, int h);
 	~wxImagePanel();
 	void SetImage(wxString file, wxBitmapType format);
+	void SetOverlayImage(wxString file, wxBitmapType format, bool show=true);
+	void ResetImage();
+	void ToggleOverlayVisibility(bool show);
 	wxSize CalcImageSizeKeepAspectRatio(int w, int h);
 
 	void OnDraw(wxPaintEvent & evt);
@@ -95,6 +100,7 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_OutFileText,
 		ID_NB_ResultNumText,
 		ID_NB_ResultPicker,
+		ID_NB_OverlayCheckBox,
 		ID_SEND_EVENT_BUTTON,
 		ID_SKELETONIZE_BUTTON,
 		ID_RELOAD_RESULTS_BUTTON,
@@ -125,6 +131,7 @@ public:
 	void OnSkeletonizeButtonClick( wxCommandEvent& event );
 	void OnClose(wxCloseEvent& event);
 	void OnInteropMessageReceived(wxCommandEvent & event);
+	void OnOverlayCheck(wxCommandEvent& event);
 
 ////@end NBLASTGuiPluginWindow event handler declarations
 
@@ -159,6 +166,7 @@ private:
 	wxButton* m_SkeletonizeButton;
 	wxButton* m_CommandButton;
 	wxButton* m_ReloadResultButton;
+	wxCheckBox* m_overlayChk;
 	wxTimer* m_wtimer;
 	wxProgressDialog* m_prg_diag;
 	bool m_waitingforR;

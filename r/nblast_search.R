@@ -28,6 +28,15 @@ if (length(args) >= 5) {
 }
 
 cat("Loading NAT...")
+
+if (!require("nat",character.only = TRUE)) {
+  if (!requireNamespace("devtools")) install.packages("devtools")
+  devtools::install_github("jefferis/nat")
+}
+if (!require("nat.nblast",character.only = TRUE)) {
+  devtools::install_github("jefferislab/nat.nblast")
+}
+
 library(nat.nblast)
 library(nat)
 
@@ -52,8 +61,16 @@ if (length(scores) <= resultnum) {
 cat("Writing results...\n")
 swczipname = paste(outfname, ".zip", sep="")
 rlistname  = paste(outfname, ".txt", sep="")
+zprojname  = paste(outfname, ".png", sep="")
 
 write.neurons(results, dir=file.path(outputdir,swczipname), files=names(results), format='swc', Force=T)
 write.table(format(slist, digits=15), file.path(outputdir,rlistname), sep=",", quote=F, col.names=F, row.names=T)
+
+zproj = projection(img, projfun=max)
+size = dim(zproj)
+png(file.path(outputdir,zprojname), size[1], size[2])
+par(plt=c(0,1,0,1))
+image(zproj, col = grey(seq(0, 1, length = 256)))
+dev.off()
 
 cat("Done\n")

@@ -27,7 +27,7 @@ END_EVENT_TABLE()
 wxImagePanel::wxImagePanel(wxWindow* parent, int w, int h) :
 wxPanel(parent)
 {
-	m_image = NULL;
+	m_orgimage = NULL;
 	m_resized = NULL;
 	m_w = -1;
 	m_h = -1;
@@ -36,23 +36,103 @@ wxPanel(parent)
 
 wxImagePanel::~wxImagePanel()
 {
-	wxDELETE(m_image);
+	wxDELETE(m_orgimage);
 	wxDELETE(m_resized);
+	m_image.Destroy();
+	m_olimage.Destroy();
 }
 
 void wxImagePanel::SetImage(wxString file, wxBitmapType format)
 {
-	wxDELETE(m_image);
+	wxDELETE(m_orgimage);
 	wxDELETE(m_resized);
-	
+	m_image.Destroy();
+
 	if (!wxFileExists(file))
 		return;
 
-	m_image = new wxImage(file, format);
-	if (m_image && m_image->IsOk())
+	m_orgimage = new wxImage(file, format);
+	if (m_orgimage && m_orgimage->IsOk())
+	{
 		m_resized = new wxBitmap();
+		m_image = m_orgimage->Copy();
+	}
 	else
-		wxDELETE(m_image);
+		wxDELETE(m_orgimage);
+}
+
+void wxImagePanel::SetOverlayImage(wxString file, wxBitmapType format, bool show)
+{
+	if (!wxFileExists(file) || !m_orgimage || !m_orgimage->IsOk())
+		return;
+
+	m_olimage.Destroy();
+	m_olimage.LoadFile(file, format);
+	if (!m_olimage.IsOk())
+		return;
+
+	ToggleOverlayVisibility(show);
+}
+
+void wxImagePanel::ToggleOverlayVisibility(bool show)
+{
+	if (!m_orgimage || !m_orgimage->IsOk())
+		return;
+
+	if (!m_olimage.IsOk())
+		return;
+
+	if (!show)
+	{
+		m_image = m_orgimage->Copy();
+		return;
+	}
+
+	int w = m_orgimage->GetSize().GetWidth();
+	int h = m_orgimage->GetSize().GetHeight();
+
+	if (m_olimage.GetSize() != m_orgimage->GetSize())
+		m_olimage = m_olimage.Scale( w, h, wxIMAGE_QUALITY_HIGH);
+
+	if (!m_olimage.IsOk())
+		return;
+
+	m_image = m_orgimage->Copy();
+	
+	unsigned char *oldata = m_olimage.GetData();
+	unsigned char *imdata = m_image.GetData();
+
+	double alpha = 0.6;
+	double alpha2 = 0.8;
+
+	m_olimage.Blur(1);
+	
+	for (int y = 0; y < h; y++)
+	{
+		for(int x = 0; x < w; x++)
+		{
+			if (oldata[(y*w+x)*3] >= 64)
+			{
+				imdata[(y*w+x)*3]   = (unsigned char)(alpha*255.0 + (1.0-alpha)*(double)imdata[(y*w+x)*3]);
+				imdata[(y*w+x)*3+1] = (unsigned char)(alpha*0.0   + (1.0-alpha)*(double)imdata[(y*w+x)*3+1]);
+				imdata[(y*w+x)*3+2] = (unsigned char)(alpha*0.0   + (1.0-alpha)*(double)imdata[(y*w+x)*3+2]);
+			}
+			else if (oldata[(y*w+x)*3] > 0)
+			{
+				imdata[(y*w+x)*3]   = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3]);
+				imdata[(y*w+x)*3+1] = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3+1]);
+				imdata[(y*w+x)*3+2] = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3+2]);
+			}
+		}
+	}
+}
+
+void wxImagePanel::ResetImage()
+{
+	if (!m_orgimage || !m_orgimage->IsOk())
+		return;
+
+	m_image = m_orgimage->Copy();
 }
 
 void wxImagePanel::OnDraw(wxPaintEvent & evt)
@@ -69,11 +149,11 @@ void wxImagePanel::PaintNow()
 
 wxSize wxImagePanel::CalcImageSizeKeepAspectRatio(int w, int h)
 {
-	if (!m_image || !m_image->IsOk())
+	if (!m_orgimage || !m_orgimage->IsOk())
 		return wxSize(-1, -1);
 
-	int orgw = m_image->GetWidth();
-	int orgh = m_image->GetHeight();
+	int orgw = m_orgimage->GetWidth();
+	int orgh = m_orgimage->GetHeight();
 
 	double nw = w;
 	double nh = (double)w*((double)orgh/(double)orgw);
@@ -89,6 +169,9 @@ void wxImagePanel::Render(wxDC& dc)
 {
 	dc.Clear();
 
+	if (!m_image.IsOk())
+		return;
+
 	int neww, newh;
 	this->GetSize( &neww, &newh );
 
@@ -99,24 +182,13 @@ void wxImagePanel::Render(wxDC& dc)
 	int posx = neww > ns.GetWidth() ? (neww-ns.GetWidth())/2 : 0;
 	int posy = newh > ns.GetHeight() ? (newh-ns.GetHeight())/2 : 0;
 
-	if( ns.GetWidth() != m_w || ns.GetHeight() != m_h )
+	wxDELETE(m_resized);
+	m_resized = new wxBitmap( m_image.Scale( ns.GetWidth(), ns.GetHeight(), wxIMAGE_QUALITY_HIGH));
+	if (m_resized && m_resized->IsOk())
 	{
-		wxDELETE(m_resized);
-		m_resized = new wxBitmap( m_image->Scale( ns.GetWidth(), ns.GetHeight(), wxIMAGE_QUALITY_HIGH));
-		if (m_resized && m_resized->IsOk())
-		{
-			m_w = ns.GetWidth();
-			m_h = ns.GetHeight();
-			dc.DrawBitmap(*m_resized, posx, posy, false);
-		}
-	}
-	else
-	{
-		if (m_resized && !m_resized->IsOk())
-			m_resized = new wxBitmap( m_image->Scale( ns.GetWidth(), ns.GetHeight(), wxIMAGE_QUALITY_HIGH));
-
-		if (m_resized && m_resized->IsOk())
-			dc.DrawBitmap(*m_resized, posx, posy, false);
+		m_w = ns.GetWidth();
+		m_h = ns.GetHeight();
+		dc.DrawBitmap(*m_resized, posx, posy, false);
 	}
 }
 
@@ -389,6 +461,7 @@ BEGIN_EVENT_TABLE( NBLASTGuiPluginWindow, wxGuiPluginWindowBase )
     EVT_BUTTON( ID_SEND_EVENT_BUTTON, NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick )
 	EVT_BUTTON( ID_SKELETONIZE_BUTTON, NBLASTGuiPluginWindow::OnSkeletonizeButtonClick )
 	EVT_BUTTON( ID_RELOAD_RESULTS_BUTTON, NBLASTGuiPluginWindow::OnReloadResultsButtonClick )
+	EVT_CHECKBOX(ID_NB_OverlayCheckBox, NBLASTGuiPluginWindow::OnOverlayCheck)
 	EVT_CLOSE(NBLASTGuiPluginWindow::OnClose)
 ////@end NBLASTGuiPluginWindow event table entries
 
@@ -484,6 +557,7 @@ void NBLASTGuiPluginWindow::Init()
 	m_CommandButton = NULL;
 	m_swcImagePanel = NULL;
 	m_mipImagePanel = NULL;
+	m_overlayChk = NULL;
 	m_prg_diag = NULL;
 	m_waitingforR = false;
 	m_waitingforFiji = false;
@@ -620,8 +694,15 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(m_ReloadResultButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
+	wxBoxSizer *sizerchk = new wxBoxSizer(wxHORIZONTAL);
+	m_overlayChk = new wxCheckBox(imgpanel, ID_NB_OverlayCheckBox, "Overlay search query");
+	m_overlayChk->SetValue(true);
+	sizerchk->Add(20, 10);
+	sizerchk->Add(m_overlayChk, 0, wxALIGN_CENTER_VERTICAL);
 	m_swcImagePanel = new wxImagePanel( imgpanel, 500, 250);
 	m_mipImagePanel = new wxImagePanel( imgpanel, 500, 250);
+	itemBoxSizer2_1->Add(5, 5);
+	itemBoxSizer2_1->Add(sizerchk, 0, wxLEFT);
 	itemBoxSizer2_1->Add(5, 5);
 	itemBoxSizer2_1->Add(m_swcImagePanel, 1, wxEXPAND);
 	itemBoxSizer2_1->Add(5, 5);
@@ -720,16 +801,20 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 		}
 		break;
 	case NB_SET_IMAGE:
-		if (plugin && m_nlibPickCtrl)
+		if (plugin && m_nlibPickCtrl && m_resultPickCtrl && m_swcImagePanel && m_mipImagePanel)
 		{
+			wxString prjimg = m_resultPickCtrl->GetPath().BeforeLast(L'.', NULL) + _(".png");
+
 			wxString imgpath1 = m_nlibPickCtrl->GetPath().BeforeLast(wxFILE_SEP_PATH, NULL) + wxFILE_SEP_PATH +
 				_("swc_prev") + wxFILE_SEP_PATH + wxString((char *)info->data) + _(".png");
 			m_swcImagePanel->SetImage(imgpath1, wxBITMAP_TYPE_PNG);
+			if (m_overlayChk->GetValue()) m_swcImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
 			m_swcImagePanel->Refresh();
 			
 			wxString imgpath2 = m_nlibPickCtrl->GetPath().BeforeLast(wxFILE_SEP_PATH, NULL) + wxFILE_SEP_PATH +
 				_("MIP") + wxFILE_SEP_PATH + wxString((char *)info->data) + _(".png");
 			m_mipImagePanel->SetImage(imgpath2, wxBITMAP_TYPE_PNG);
+			if (m_overlayChk->GetValue()) m_mipImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
 			m_mipImagePanel->Refresh();
 		}
 	default:
@@ -815,6 +900,17 @@ void NBLASTGuiPluginWindow::OnReloadResultsButtonClick( wxCommandEvent& event )
 	if (m_results) m_results->LoadResults(respath, m_nlibPickCtrl->GetPath().BeforeLast(wxFILE_SEP_PATH, NULL));
 
     event.Skip();
+}
+
+void NBLASTGuiPluginWindow::OnOverlayCheck( wxCommandEvent& event )
+{
+	if (m_swcImagePanel && m_mipImagePanel)
+	{
+		m_swcImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue());
+		m_mipImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue());
+		m_swcImagePanel->Refresh();
+		m_mipImagePanel->Refresh();
+	}
 }
 
 void NBLASTGuiPluginWindow::OnClose(wxCloseEvent& event)
