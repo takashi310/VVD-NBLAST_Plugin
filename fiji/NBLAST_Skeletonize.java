@@ -35,10 +35,15 @@ public class NBLAST_Skeletonize implements PlugInFilter
 	IJ.log(""+scalefac);
 	if (scalefac < scale_limit)
 		scalefac = scale_limit;
+	if (scalefac > 1.0)
+		scalefac = 1.0;
 	
 	String newtitle = imp.getTitle() + ".skeleton";
-	IJ.run(imp, "Scale...", "x="+scalefac+" y="+scalefac+" z="+scalefac+" interpolation=Bilinear average processcreate title="+newtitle);
-	IJ.selectWindow(newtitle);
+	if (scalefac < 1.0 && scalefac > 0.0)
+	{
+		IJ.run(imp, "Scale...", "x="+scalefac+" y="+scalefac+" z="+scalefac+" interpolation=Bilinear average processcreate title="+newtitle);
+		IJ.selectWindow(newtitle);
+	}
 	IJ.setThreshold(64.0, 255.0, "Black & White");
 	IJ.run("Convert to Mask", "method=Default background=Dark black");
 	IJ.run("Skeletonize (2D/3D)", "");
