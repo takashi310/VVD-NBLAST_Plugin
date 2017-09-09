@@ -65,13 +65,14 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_out_dir.Replace("\\", "\\\\");
 	m_ofname.Replace("\\", "\\\\");
     
-    wxString com = _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
+    wxString com = "call " + _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
     _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ") + _("\"")+m_rnum+_("\" ");
     wxExecuteEnv env;
     wxString envpath;
     wxGetEnv(_("PATH"), &envpath);
     env.env["PATH"] = envpath;
-    wxExecute(com, wxEXEC_SYNC, NULL, &env);
+    //wxExecute(com, wxEXEC_SYNC, NULL, &env);
+	wxShell(com);
 #else
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
 	expath = expath.BeforeLast(wxFILE_SEP_PATH, NULL);

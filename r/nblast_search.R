@@ -39,6 +39,9 @@ if (!require("nat.nblast",character.only = TRUE)) {
 
 library(nat.nblast)
 library(nat)
+library(foreach)
+library(parallel)
+library(doParallel)
 
 cat("Loading neuron libraries...\n")
 dp = read.neuronlistfh(nlibpath, localdir=dirname(nlibpath))
@@ -47,7 +50,11 @@ cat("Loading images...\n")
 img = read.im3d(imagefile)
 
 cat("Running NBLAST...\n")
-scores = nblast(dotprops(img), dp, normalised=T, .progress='text')
+
+cl <- parallel::makeCluster(parallel::detectCores()-1)
+registerDoParallel(cl)
+
+scores = nblast(dotprops(img), dp, normalised=T, UseAlpha=T, .parallel=T, .progress='text')
 scores = sort(scores, dec=T)
 
 if (length(scores) <= resultnum) {
@@ -72,5 +79,7 @@ png(file.path(outputdir,zprojname), size[1], size[2])
 par(plt=c(0,1,0,1))
 image(zproj, col = grey(seq(0, 1, length = 256)))
 dev.off()
+
+stopCluster(cl)
 
 cat("Done\n")
