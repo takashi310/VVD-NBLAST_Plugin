@@ -36,6 +36,12 @@ if (!require("nat",character.only = TRUE)) {
 if (!require("nat.nblast",character.only = TRUE)) {
   devtools::install_github("jefferislab/nat.nblast")
 }
+if (!require("foreach",character.only = TRUE)) {
+  install.packages("foreach", repos="http://cran.rstudio.com/")
+}
+if (!require("doParallel",character.only = TRUE)) {
+  install.packages("doParallel", repos="http://cran.rstudio.com/")
+}
 
 library(nat.nblast)
 library(nat)
