@@ -2,6 +2,7 @@
 #define _NBLASTGuiPluginWindow_H_
 
 #include <wxGuiPluginWindowBase.h>
+#include <wx/dialog.h>
 #include <wx/filepicker.h>
 #include <wx/progdlg.h>
 #include <wx/listctrl.h>
@@ -16,6 +17,100 @@
 #define SYMBOL_NBLASTGuiPluginWindow_IDNAME ID_NBLASTGuiPluginWindow
 #define SYMBOL_NBLASTGuiPluginWindow_SIZE wxSize(400, 300)
 #define SYMBOL_NBLASTGuiPluginWindow_POSITION wxDefaultPosition
+
+class NBLASTDatabaseListCtrl : public wxListCtrl
+{
+	enum
+	{
+		ID_NameDispText = wxID_HIGHEST+12001,
+		ID_ColorPicker,
+		ID_DescriptionText
+	};
+
+public:
+	NBLASTDatabaseListCtrl(wxWindow* parent,
+		wxWindowID id,
+		const wxPoint& pos = wxDefaultPosition,
+		const wxSize& size = wxDefaultSize,
+		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
+	~NBLASTDatabaseListCtrl();
+
+	void Append(wxString path);
+	
+	void UpdateList();
+	void UpdateText();
+	void DeleteSelection();
+	void DeleteAll();
+
+	wxString GetText(long item, int col);
+	void SetText(long item, int col, const wxString &str);
+	wxArrayString getList() { return m_db_list; }
+	
+private:
+	
+	wxFilePickerCtrl *m_name_disp;
+	wxArrayString m_db_list;
+
+	long m_editing_item;
+	long m_dragging_to_item;
+	long m_dragging_item;
+
+private:
+	void EndEdit();
+	void OnAct(wxListEvent &event);
+	void OnEndSelection(wxListEvent &event);
+	void OnNameDispText(wxCommandEvent& event);
+	void OnEnterInTextCtrl(wxCommandEvent& event);
+	void OnBeginDrag(wxListEvent& event);
+	void OnDragging(wxMouseEvent& event);
+	void OnEndDrag(wxMouseEvent& event);
+	void OnLeftDClick(wxMouseEvent& event);
+
+	void OnColumnSizeChanged(wxListEvent &event);
+
+	void OnKeyDown(wxKeyEvent& event);
+	void OnKeyUp(wxKeyEvent& event);
+
+	void OnScroll(wxScrollWinEvent& event);
+	void OnScroll(wxMouseEvent& event);
+
+	void ShowTextCtrls(long item);
+
+	DECLARE_EVENT_TABLE()
+protected: //Possible TODO
+	wxSize GetSizeAvailableForScrollTarget(const wxSize& size) {
+		return size - GetEffectiveMinSize();
+	}
+};
+
+
+class wxDBListDialog : public wxDialog
+{
+	enum
+	{
+		ID_AddButton = wxID_HIGHEST+12101,
+		ID_NewDBPick
+	};
+
+public:
+	wxDBListDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+					const wxPoint &pos = wxDefaultPosition,
+					const wxSize &size = wxDefaultSize,
+					long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
+	wxArrayString getList(){ return m_list ? m_list->getList() : wxArrayString(); }
+
+private:
+	NBLASTDatabaseListCtrl *m_list;
+	wxFilePickerCtrl *m_new_db_pick;
+	wxButton* m_add_button;
+
+public:
+	void OnAddButtonClick( wxCommandEvent& event );
+
+	DECLARE_EVENT_TABLE();
+};
+
 
 class wxImagePanel : public wxPanel
 {
@@ -43,11 +138,12 @@ public:
 	DECLARE_EVENT_TABLE()
 };
 
+
 class NBLASTListCtrl : public wxListCtrl, public Notifier
 {
 	enum
 	{
-		Menu_AddTo = wxID_HIGHEST+5100,
+		Menu_AddTo = wxID_HIGHEST+12201,
 		Menu_Save
 	};
 
@@ -102,6 +198,7 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_ResultPicker,
 		ID_NB_OverlayCheckBox,
 		ID_SEND_EVENT_BUTTON,
+		ID_EDIT_DB_BUTTON,
 		ID_SKELETONIZE_BUTTON,
 		ID_RELOAD_RESULTS_BUTTON,
 		ID_WaitTimer
@@ -128,6 +225,7 @@ public:
 
     void OnSENDEVENTBUTTONClick( wxCommandEvent& event );
 	void OnReloadResultsButtonClick( wxCommandEvent& event );
+	void OnEditDBButtonClick( wxCommandEvent& event );
 	void OnSkeletonizeButtonClick( wxCommandEvent& event );
 	void OnClose(wxCloseEvent& event);
 	void OnInteropMessageReceived(wxCommandEvent & event);
@@ -165,6 +263,7 @@ private:
 	wxImagePanel* m_mipImagePanel;
 	wxButton* m_SkeletonizeButton;
 	wxButton* m_CommandButton;
+	wxButton* m_EditDBButton;
 	wxButton* m_ReloadResultButton;
 	wxCheckBox* m_overlayChk;
 	wxTimer* m_wtimer;
