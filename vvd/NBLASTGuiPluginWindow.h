@@ -32,34 +32,40 @@ public:
 		wxWindowID id,
 		const wxPoint& pos = wxDefaultPosition,
 		const wxSize& size = wxDefaultSize,
-		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
+		long style=wxLC_REPORT|wxLC_SINGLE_SEL|wxLC_NO_HEADER);
 	~NBLASTDatabaseListCtrl();
 
-	void Append(wxString path);
 	
+	void Add(wxString path, wxString name=wxString(), bool selection=false);
 	void UpdateList();
 	void UpdateText();
 	void DeleteSelection();
 	void DeleteAll();
 
+	void SetColumnWidthAuto();
+
 	wxString GetText(long item, int col);
 	void SetText(long item, int col, const wxString &str);
 	wxArrayString getList() { return m_db_list; }
-	
+	wxArrayString getPathList() { return m_db_path_list; }
 private:
 	
-	wxFilePickerCtrl *m_name_disp;
+	wxTextCtrl *m_name_disp;
+	wxFilePickerCtrl *m_path_disp;
 	wxArrayString m_db_list;
+	wxArrayString m_db_path_list;
 
 	long m_editing_item;
 	long m_dragging_to_item;
 	long m_dragging_item;
 
 private:
+	void Append(wxString path, wxString name=wxString());
 	void EndEdit();
 	void OnAct(wxListEvent &event);
 	void OnEndSelection(wxListEvent &event);
 	void OnNameDispText(wxCommandEvent& event);
+	void OnPathText(wxCommandEvent& event);
 	void OnEnterInTextCtrl(wxCommandEvent& event);
 	void OnBeginDrag(wxListEvent& event);
 	void OnDragging(wxMouseEvent& event);
@@ -73,6 +79,8 @@ private:
 
 	void OnScroll(wxScrollWinEvent& event);
 	void OnScroll(wxMouseEvent& event);
+
+	void OnResize(wxSizeEvent& event);
 
 	void ShowTextCtrls(long item);
 
@@ -99,6 +107,9 @@ public:
 					long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 
 	wxArrayString getList(){ return m_list ? m_list->getList() : wxArrayString(); }
+	wxArrayString getPathList(){ return m_list ? m_list->getPathList() : wxArrayString(); }
+	void LoadList();
+	void SaveList();
 
 private:
 	NBLASTDatabaseListCtrl *m_list;
@@ -107,6 +118,7 @@ private:
 
 public:
 	void OnAddButtonClick( wxCommandEvent& event );
+	void OnOk( wxCommandEvent& event );
 
 	DECLARE_EVENT_TABLE();
 };
@@ -270,6 +282,10 @@ private:
 	wxProgressDialog* m_prg_diag;
 	bool m_waitingforR;
 	bool m_waitingforFiji;
+	wxArrayString m_nlib_list;
+	wxArrayString m_nlib_path_list;
+	std::vector<wxCheckBox*> m_nlib_chks;
+	wxStaticBoxSizer *m_nlib_box;
 };
 
 #endif

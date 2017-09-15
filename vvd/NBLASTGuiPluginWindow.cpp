@@ -18,12 +18,15 @@
 #include <wx/tokenzr.h>
 #include <wx/dcbuffer.h>
 #include <wx/valnum.h>
+#include <wx/filename.h>
 
 BEGIN_EVENT_TABLE(NBLASTDatabaseListCtrl, wxListCtrl)
 	EVT_LIST_ITEM_DESELECTED(wxID_ANY, NBLASTDatabaseListCtrl::OnEndSelection)
 	EVT_LIST_ITEM_ACTIVATED(wxID_ANY, NBLASTDatabaseListCtrl::OnAct)
 	EVT_TEXT(ID_NameDispText, NBLASTDatabaseListCtrl::OnNameDispText)
 	EVT_TEXT_ENTER(ID_NameDispText, NBLASTDatabaseListCtrl::OnEnterInTextCtrl)
+	EVT_TEXT(ID_DescriptionText, NBLASTDatabaseListCtrl::OnPathText)
+	EVT_TEXT_ENTER(ID_DescriptionText, NBLASTDatabaseListCtrl::OnEnterInTextCtrl)
 	EVT_KEY_DOWN(NBLASTDatabaseListCtrl::OnKeyDown)
 	EVT_KEY_UP(NBLASTDatabaseListCtrl::OnKeyUp)
 	EVT_LIST_BEGIN_DRAG(wxID_ANY, NBLASTDatabaseListCtrl::OnBeginDrag)
@@ -31,6 +34,7 @@ BEGIN_EVENT_TABLE(NBLASTDatabaseListCtrl, wxListCtrl)
 	EVT_SCROLLWIN(NBLASTDatabaseListCtrl::OnScroll)
 	EVT_MOUSEWHEEL(NBLASTDatabaseListCtrl::OnScroll)
 	EVT_LEFT_DCLICK(NBLASTDatabaseListCtrl::OnLeftDClick)
+	EVT_SIZE(NBLASTDatabaseListCtrl::OnResize)
 END_EVENT_TABLE()
 
 NBLASTDatabaseListCtrl::NBLASTDatabaseListCtrl(
@@ -49,14 +53,19 @@ wxListCtrl(parent, id, pos, size, style),
 	Freeze();
 
 	wxListItem itemCol;
-	itemCol.SetText("Path");
+	itemCol.SetText("Name");
 	this->InsertColumn(0, itemCol);
-	SetColumnWidth(0, 500);
+	SetColumnWidth(0, 150);
+	itemCol.SetText("Path");
+	this->InsertColumn(1, itemCol);
+	SetColumnWidth(1, 350);
 	
 	//frame edit
-	m_name_disp = new wxFilePickerCtrl( this, ID_NameDispText, "", _("Choose a target neuron library"), "*.rds",
-										wxDefaultPosition, wxDefaultSize);
+	m_name_disp = new wxTextCtrl(this, ID_NameDispText, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER);
 	m_name_disp->Hide();
+
+	m_path_disp = new wxFilePickerCtrl(this, ID_DescriptionText, "", _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_SMALL);
+	m_path_disp->Hide();
 
 	Thaw();
 	SetEvtHandlerEnabled(true);
@@ -66,36 +75,74 @@ NBLASTDatabaseListCtrl::~NBLASTDatabaseListCtrl()
 {
 }
 
-void NBLASTDatabaseListCtrl::Append(wxString path)
+void NBLASTDatabaseListCtrl::Append(wxString path, wxString name)
 {
-	long tmp = InsertItem(GetItemCount(), path);
-	SetColumnWidth(0, wxLIST_AUTOSIZE);
-	//    SetColumnWidth(0, wxLIST_AUTOSIZE_USEHEADER);
+	wxString nstr;
+	if (name.IsEmpty())
+	{
+		wxFileName fn(path);
+		nstr = fn.GetName();
+	}
+	else
+		nstr = name;
+	long tmp = InsertItem(GetItemCount(), nstr);
+	SetItem(tmp, 1, path);
+}
+
+void NBLASTDatabaseListCtrl::Add(wxString path, wxString name, bool selection)
+{
+	Append(path, name);
+	wxString newname = GetText(GetItemCount()-1, 0);
+	m_db_list.Add(newname);
+	m_db_path_list.Add(path);
+	if (selection) SetItemState(GetItemCount()-1, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+	SetColumnWidthAuto();
+}
+
+void NBLASTDatabaseListCtrl::SetColumnWidthAuto()
+{
+	wxSize sz = GetSize();
+	int w1 = GetColumnWidth(0);
+	SetEvtHandlerEnabled(false);
+	SetColumnWidth(1, wxLIST_AUTOSIZE);
+	SetEvtHandlerEnabled(true);
+	int w2 = GetColumnWidth(1);
+	if (w1+w2 < sz.GetWidth()-5)
+		SetColumnWidth(1, sz.GetWidth()-5-w1);
+	else
+		SetColumnWidth(1, wxLIST_AUTOSIZE);
+}
+
+void NBLASTDatabaseListCtrl::OnResize(wxSizeEvent& event)
+{
+	SetColumnWidthAuto();
+	event.Skip();
 }
 
 void NBLASTDatabaseListCtrl::UpdateList()
 {
 	m_name_disp->Hide();
+	m_path_disp->Hide();
     m_editing_item = -1;
 
 	DeleteAllItems();
 
 	for (int i=0; i<(int)m_db_list.Count(); i++)
-		Append(m_db_list[i]);
+		Append(m_db_path_list[i], m_db_list[i]);
+	SetColumnWidthAuto();
 }
 
 void NBLASTDatabaseListCtrl::UpdateText()
 {
 	m_name_disp->Hide();
+	m_path_disp->Hide();
 	m_editing_item = -1;
 
 	for (int i=0; i<(int)m_db_list.Count(); i++)
 		SetText(i, 0, m_db_list[i]);
-	/*
-	long item = GetItemCount() - 1;
-	if (item != -1)
-	SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
-	*/
+	for (int i=0; i<(int)m_db_path_list.Count(); i++)
+		SetText(i, 1, m_db_path_list[i]);
+	SetColumnWidthAuto();
 }
 
 void NBLASTDatabaseListCtrl::DeleteSelection()
@@ -105,8 +152,8 @@ void NBLASTDatabaseListCtrl::DeleteSelection()
 		wxLIST_STATE_SELECTED);
 	if (item != -1)
 	{
-		wxString name = GetItemText(item);
-		m_db_list.Remove(name);
+		m_db_list.RemoveAt(item);
+		m_db_path_list.RemoveAt(item);
 		UpdateList();
 	}
 }
@@ -114,6 +161,7 @@ void NBLASTDatabaseListCtrl::DeleteSelection()
 void NBLASTDatabaseListCtrl::DeleteAll()
 {
 	m_db_list.Clear();
+	m_db_path_list.Clear();
 	UpdateList();
 }
 
@@ -147,12 +195,24 @@ void NBLASTDatabaseListCtrl::ShowTextCtrls(long item)
 		//add frame text
 		GetSubItemRect(item, 0, rect);
 		str = GetText(item, 0);
-		rect.SetLeft(rect.GetLeft()+20);
-		rect.SetRight(rect.GetRight()-20);
+		rect.SetLeft(rect.GetLeft());
+		rect.SetRight(rect.GetRight());
 		m_name_disp->SetPosition(rect.GetTopLeft());
 		m_name_disp->SetSize(rect.GetSize());
-		m_name_disp->SetPath(str);
+		m_name_disp->SetValue(str);
 		m_name_disp->Show();
+
+		int c0w = rect.GetWidth();
+		//add description text
+		GetSubItemRect(item, 1, rect);
+		str = GetText(item, 1);
+		wxSize sz = rect.GetSize();
+		int win_w = GetSize().GetWidth();
+		sz.SetWidth(win_w-c0w-3); 
+		m_path_disp->SetPosition(rect.GetTopLeft());
+		m_path_disp->SetSize(sz);
+		m_path_disp->SetPath(str);
+		m_path_disp->Show();
 	}
 }
 
@@ -180,7 +240,12 @@ void NBLASTDatabaseListCtrl::OnLeftDClick(wxMouseEvent& event)
 	{
 		wxPoint pos = event.GetPosition();
 		ShowTextCtrls(item);
-		m_name_disp->SetFocus();
+		wxRect rect;
+		GetSubItemRect(item, 1, rect);
+		if (rect.Contains(pos))
+			m_path_disp->SetFocus();
+		else
+			m_name_disp->SetFocus();
 	}
 }
 
@@ -194,8 +259,10 @@ void NBLASTDatabaseListCtrl::EndEdit()
 			
 			if(m_editing_item < m_db_list.Count())
 			{
-				wxString str = m_name_disp->GetPath();
+				wxString str = m_name_disp->GetValue();
 				m_db_list[m_editing_item] = str;
+				str = m_path_disp->GetPath();
+				m_db_path_list[m_editing_item] = str;
 				SetItemState(m_editing_item, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
 				m_editing_item = -1;
 			}
@@ -221,9 +288,19 @@ void NBLASTDatabaseListCtrl::OnNameDispText(wxCommandEvent& event)
 	if (m_editing_item == -1)
 		return;
 
-	wxString str = m_name_disp->GetPath();
+	wxString str = m_name_disp->GetValue();
 
 	SetText(m_editing_item, 0, str);
+}
+
+void NBLASTDatabaseListCtrl::OnPathText(wxCommandEvent& event)
+{
+	if (m_editing_item == -1)
+		return;
+
+	wxString str = m_path_disp->GetPath();
+
+	SetText(m_editing_item, 1, str);
 }
 
 void NBLASTDatabaseListCtrl::OnBeginDrag(wxListEvent& event)
@@ -244,6 +321,7 @@ void NBLASTDatabaseListCtrl::OnBeginDrag(wxListEvent& event)
 	SetCursor(wxCursor(wxCURSOR_WATCH));
 
 	m_name_disp->Hide();
+	m_path_disp->Hide();
 }
 
 void NBLASTDatabaseListCtrl::OnDragging(wxMouseEvent& event)
@@ -257,6 +335,7 @@ void NBLASTDatabaseListCtrl::OnDragging(wxMouseEvent& event)
 
 		//change the content in the ruler list
 		swap(m_db_list[m_dragging_item], m_db_list[m_dragging_to_item]);
+		swap(m_db_path_list[m_dragging_item], m_db_path_list[m_dragging_to_item]);
 
 		DeleteItem(m_dragging_item);
 		InsertItem(m_dragging_to_item, "", 0);
@@ -315,16 +394,25 @@ void NBLASTDatabaseListCtrl::OnColumnSizeChanged(wxListEvent &event)
 	wxRect rect;
 	wxString str;
 	GetSubItemRect(m_editing_item, 0, rect);
-	rect.SetLeft(rect.GetLeft()+20);
-	rect.SetRight(rect.GetRight()-20);
+	rect.SetLeft(rect.GetLeft());
+	rect.SetRight(rect.GetRight());
 	m_name_disp->SetPosition(rect.GetTopLeft());
 	m_name_disp->SetSize(rect.GetSize());
+	
+	int c0w = rect.GetWidth();
+	GetSubItemRect(m_editing_item, 1, rect);
+	wxSize sz = rect.GetSize();
+	int win_w = GetSize().GetWidth();
+	sz.SetWidth(win_w-c0w-3);
+	m_path_disp->SetPosition(rect.GetTopLeft());
+	m_path_disp->SetSize(sz);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 BEGIN_EVENT_TABLE( wxDBListDialog, wxDialog )
     EVT_BUTTON( ID_AddButton, wxDBListDialog::OnAddButtonClick )
+	EVT_BUTTON( wxID_OK, wxDBListDialog::OnOk )
 END_EVENT_TABLE()
 
 wxDBListDialog::wxDBListDialog(wxWindow* parent, wxWindowID id, const wxString &title,
@@ -378,14 +466,84 @@ wxDBListDialog::wxDBListDialog(wxWindow* parent, wxWindowID id, const wxString &
 	itemBoxSizer->Add(10, 10);
 	
 	SetSizer(itemBoxSizer);
+
+	LoadList();
 	
 	Thaw();
 	SetEvtHandlerEnabled(true);
 }
 
+void wxDBListDialog::LoadList()
+{
+	if (!m_list)
+		return;
+
+	wxString expath = wxStandardPaths::Get().GetExecutablePath();
+	expath = expath.BeforeLast(GETSLASH(), NULL);
+#ifdef _WIN32
+	wxString listpath = expath + "\\NBLAST_database_list.txt";
+	if (!wxFileExists(listpath))
+		listpath = wxStandardPaths::Get().GetUserConfigDir() + "\\NBLAST_database_list.txt";
+#else
+	wxString listpath = expath + "/../Resources/NBLAST_database_list.txt";
+#endif
+	if (wxFileExists(listpath))
+	{
+		m_list->DeleteAll();
+		wxFileInputStream is(listpath);
+		wxTextInputStream text(is);
+		while(is.IsOk() && !is.Eof() )
+		{
+			wxString line = text.ReadLine();
+			wxStringTokenizer tkz(line, wxT("\t"));
+
+			wxArrayString tokens;
+			while(tkz.HasMoreTokens())
+				tokens.Add(tkz.GetNextToken());
+
+			if (tokens.Count() == 1)
+				m_list->Add(tokens[0]);
+			if (tokens.Count() >= 2)
+				m_list->Add(tokens[1], tokens[0]);
+		}
+	}
+}
+
+void wxDBListDialog::SaveList()
+{
+	if (!m_list)
+		return;
+
+	wxString expath = wxStandardPaths::Get().GetExecutablePath();
+	expath = expath.BeforeLast(GETSLASH(),NULL);
+#ifdef _WIN32
+	wxString listpath = expath + "\\NBLAST_database_list.txt";
+	wxString listpath2 = wxStandardPaths::Get().GetUserConfigDir() + "\\NBLAST_database_list.txt";
+	if (!wxFileExists(listpath) && wxFileExists(listpath2))
+		listpath = listpath2;
+#else
+	wxString listpath = expath + "/../Resources/NBLAST_database_list.txt";
+#endif
+	wxFileOutputStream os(listpath);
+	wxTextOutputStream tos(os);
+	wxArrayString list = m_list->getList();
+	wxArrayString path_list = m_list->getPathList();
+
+	for (int i = 0; i < list.Count()-1; i++)
+		tos << list[i] << "\t" << path_list[i] << endl;
+	tos << list[list.Count()-1] << "\t" << path_list[list.Count()-1];
+}
+
 void wxDBListDialog::OnAddButtonClick( wxCommandEvent& event )
 {
+	if (m_list && m_new_db_pick)
+		m_list->Add(m_new_db_pick->GetPath(), wxString(), true);
+}
 
+void wxDBListDialog::OnOk( wxCommandEvent& event )
+{
+	SaveList();
+	event.Skip();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1016,7 +1174,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	sizer1->Add(10, 10);
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer1, 0, wxEXPAND);
-
+/*
 	wxBoxSizer *sizer2 = new wxBoxSizer(wxHORIZONTAL);
 	st = new wxStaticText(nbpanel, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_nlibPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_RPicker, nlibpath, _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxSize(400, -1));
@@ -1027,18 +1185,32 @@ void NBLASTGuiPluginWindow::CreateControls()
 	sizer2->Add(10, 10);
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer2, 0, wxEXPAND);
+*/
+	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
+	m_nlib_list = dbdlg.getList();
+	m_nlib_path_list = dbdlg.getPathList();
 
-	wxBoxSizer *sizer2_1= new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	sizer2_1->Add(5, 10);
-	sizer2_1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	itemBoxSizer2->Add(5, 5);
-	itemBoxSizer2->Add(sizer2_1, 0, wxEXPAND);
-	wxBoxSizer *sizer2_2= new wxBoxSizer(wxHORIZONTAL);
+	int cols = 3;
+	int rows = 1;
+	if (m_nlib_list.size() > 0)
+		rows = (m_nlib_list.size() / cols) + 1;
+	wxFlexGridSizer *gs = new wxFlexGridSizer(rows, cols, 20, 10);
+	m_nlib_box = new wxStaticBoxSizer(wxVERTICAL, nbpanel, "Target Neurons");
+	//m_nlib_box->GetStaticBox()->SetWindowStyleFlag(wxSIMPLE_BORDER);
+	for (int i = 0; i < m_nlib_list.size(); i++)
+	{
+		m_nlib_chks.push_back(new wxCheckBox(nbpanel, wxID_ANY, m_nlib_list[i]));
+		gs->Add(m_nlib_chks[i], 0, wxALIGN_CENTER);
+	}
+	m_nlib_box->Add(gs, 0, wxALIGN_CENTER|wxALL, 10);
+	//itemBoxSizer2->Add(m_nlib_box, 0, wxALIGN_CENTER);
 	
-	m_EditDBButton = new wxButton( nbpanel, ID_EDIT_DB_BUTTON, _("Edit NBLAST Database"), wxDefaultPosition, wxDefaultSize, 0 );
+	wxBoxSizer *sizer2_2 = new wxBoxSizer(wxHORIZONTAL);
+	m_EditDBButton = new wxButton( nbpanel, ID_EDIT_DB_BUTTON, _("Edit Databases"), wxDefaultPosition, wxSize(-1, 40), 0 );
+	sizer2_2->Add(m_nlib_box, 0, wxALIGN_CENTER_VERTICAL);
+	sizer2_2->Add(10, 10);
 	sizer2_2->Add(m_EditDBButton, 0, wxALIGN_CENTER_VERTICAL);
-	itemBoxSizer2->Add(5, 5);
+	itemBoxSizer2->Add(5, 10);
 	itemBoxSizer2->Add(sizer2_2, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
 	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
@@ -1049,7 +1221,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	sizer3->Add(5, 10);
 	sizer3->Add(m_outdirPickCtrl, 1, wxRIGHT|wxEXPAND);
 	sizer3->Add(10, 10);
-	itemBoxSizer2->Add(5, 5);
+	itemBoxSizer2->Add(5, 10);
 	itemBoxSizer2->Add(sizer3, 0, wxEXPAND);
 
 	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
@@ -1307,7 +1479,7 @@ void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
 
 void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )
 {
-	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database");
+	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
 	if (dbdlg.ShowModal() == wxID_OK)
 	{
 		int dummy = 0;
