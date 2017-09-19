@@ -29,12 +29,12 @@ NBLASTGuiPlugin::~NBLASTGuiPlugin()
 bool NBLASTGuiPlugin::runNBLAST()
 {
 
-	return runNBLAST(m_R_path, m_nlib_path, m_out_dir, m_ofname, m_rnum);
+	return runNBLAST(m_R_path, m_nlib_path, m_out_dir, m_ofname, m_rnum, m_db_names);
 }
 
-bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum)
+bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names)
 {
-	if (!wxFileExists(rpath) || !wxFileExists(nlibpath) || outdir.IsEmpty() || ofname.IsEmpty() || rnum.IsEmpty())
+	if (!wxFileExists(rpath) || outdir.IsEmpty() || ofname.IsEmpty() || rnum.IsEmpty())
 		return false;
 	
 	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
@@ -54,19 +54,22 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_out_dir = outdir;
 	m_ofname = ofname;
 	m_rnum = rnum;
+	m_db_names = db_names;
 
 	wxString rscript;
 #ifdef _WIN32
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
 	expath = expath.BeforeLast(wxFILE_SEP_PATH, NULL);
 	rscript = expath + "\\nblast_search.R";
-	tempvdpath.Replace("\\", "\\\\");
-	m_nlib_path.Replace("\\", "\\\\");
-	m_out_dir.Replace("\\", "\\\\");
-	m_ofname.Replace("\\", "\\\\");
+	//tempvdpath.Replace("\\", "\\\\");
+	//m_nlib_path.Replace("\\", "\\\\");
+	//m_out_dir.Replace("\\", "\\\\");
+	//m_ofname.Replace("\\", "\\\\");
     
     wxString com = "call " + _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
     _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ") + _("\"")+m_rnum+_("\" ");
+	if (!m_db_names.IsEmpty())
+		com += _("\"")+m_db_names+_("\"");
     wxExecuteEnv env;
     wxString envpath;
     wxGetEnv(_("PATH"), &envpath);
@@ -79,7 +82,10 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	rscript = expath + "/../Resources/nblast_search.R";
     wxString term = expath + "/../Resources/term.sh";
     wxString com = _("bash \'")+term+_("\' ") + _("\"") + _("\'")+m_R_path+_("\' ") + _("\'")+rscript+_("\' ") + _("\'")+tempvdpath+_("\' ") +
-    _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ") + _("\'")+m_rnum+_("\' ") +_("\"");
+    _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ") + _("\'")+m_rnum+_("\' ");
+	if (!m_db_names.IsEmpty())
+		com += _("\'")+m_db_names+_("\' ");
+	com += _("\"");
     wxExecute(com, wxEXEC_SYNC);
     wxString act = "osascript -e 'tell application \"System Events\" to set frontmost of the first process whose unix id is "+wxString::Format("%lu", wxGetProcessId())+" to true'";
     wxExecute(act, wxEXEC_HIDE_CONSOLE|wxEXEC_ASYNC);
@@ -142,6 +148,18 @@ bool NBLASTGuiPlugin::LoadSWC(wxString name, wxString swc_zip_path)
 	}
 
 	delete [] buff;
+
+	return true;
+}
+
+bool NBLASTGuiPlugin::LoadSWC(wxString path)
+{
+	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
+	if (!vframe) return false;
+
+	wxArrayString arr;
+	arr.Add(path);
+	vframe->LoadMeshes(arr);
 
 	return true;
 }

@@ -33,6 +33,8 @@ public:
 	wxString GetFileName() { return m_ofname; }
 	void SetResultNum(wxString num) { m_rnum = num; }
 	wxString GetResultNum() { return m_rnum; }
+	void SetDatabaseNames(wxString num) { m_db_names = num; }
+	wxString GetDatabaseNames() { return m_db_names; }
 
 	wxString GetPID() { return m_pid; }
 
@@ -40,8 +42,9 @@ public:
 	void SaveConfigFile();
 
 	bool runNBLAST();
-	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum);
+	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString());
 	bool LoadSWC(wxString name, wxString swc_zip_path);
+	bool LoadSWC(wxString path);
 	bool skeletonizeMask();
 
 	void OnTimer(wxTimerEvent& event);
@@ -52,6 +55,7 @@ private:
 	wxString m_nlib_path;
 	wxString m_ofname;
 	wxString m_rnum;
+	wxString m_db_names;
 	wxTimer m_timer;
 	wxStopWatch m_watch;
 	wxString m_pid;

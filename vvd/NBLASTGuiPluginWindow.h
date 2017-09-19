@@ -18,6 +18,13 @@
 #define SYMBOL_NBLASTGuiPluginWindow_SIZE wxSize(400, 300)
 #define SYMBOL_NBLASTGuiPluginWindow_POSITION wxDefaultPosition
 
+struct NBLASTDBListItemData
+{
+	wxString name;
+	wxString path;
+	bool state;
+};
+
 class NBLASTDatabaseListCtrl : public wxListCtrl
 {
 	enum
@@ -32,7 +39,7 @@ public:
 		wxWindowID id,
 		const wxPoint& pos = wxDefaultPosition,
 		const wxSize& size = wxDefaultSize,
-		long style=wxLC_REPORT|wxLC_SINGLE_SEL|wxLC_NO_HEADER);
+		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
 	~NBLASTDatabaseListCtrl();
 
 	
@@ -46,14 +53,20 @@ public:
 
 	wxString GetText(long item, int col);
 	void SetText(long item, int col, const wxString &str);
-	wxArrayString getList() { return m_db_list; }
-	wxArrayString getPathList() { return m_db_path_list; }
+	
+	void SetState(size_t id, bool state) { if (id < m_list.size()) m_list[id].state = state; }
+	bool GetState(size_t id)
+	{
+		if (id < m_list.size()) return m_list[id].state;
+		else return false;
+	}
+
+	std::vector<NBLASTDBListItemData> getList() { return m_list; }
 private:
 	
 	wxTextCtrl *m_name_disp;
 	wxFilePickerCtrl *m_path_disp;
-	wxArrayString m_db_list;
-	wxArrayString m_db_path_list;
+	std::vector<NBLASTDBListItemData> m_list;
 
 	long m_editing_item;
 	long m_dragging_to_item;
@@ -106,8 +119,15 @@ public:
 					const wxSize &size = wxDefaultSize,
 					long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 
-	wxArrayString getList(){ return m_list ? m_list->getList() : wxArrayString(); }
-	wxArrayString getPathList(){ return m_list ? m_list->getPathList() : wxArrayString(); }
+	std::vector<NBLASTDBListItemData> getList(){ return m_list ? m_list->getList() : std::vector<NBLASTDBListItemData>(); }
+	
+	void setState(size_t id, bool state) { if (m_list) m_list->SetState(id, state); }
+	bool getState(size_t id)
+	{
+		if (m_list) return m_list->GetState(id);
+		else return false;
+	}
+
 	void LoadList();
 	void SaveList();
 
@@ -167,10 +187,10 @@ public:
 		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
 	~NBLASTListCtrl();
 
-	void Append(wxString name, wxString score, int mipid=-1, int swcid=-1);
+	void Append(wxString name, wxString dbname, wxString score, int mipid=-1, int swcid=-1);
 	wxString GetText(long item, int col);
 	
-	void LoadResults(wxString csvfilepath, wxString dbdir);
+	void LoadResults(wxString csvfilepath);
 
 private:
 	void OnSelect(wxListEvent &event);
@@ -191,6 +211,8 @@ protected: //Possible TODO
 private:
 	wxImageList *m_images;
 	wxStopWatch m_watch;
+	wxArrayString m_dbdirs;
+	std::vector<int> m_dbs;
 };
 
 
@@ -282,10 +304,10 @@ private:
 	wxProgressDialog* m_prg_diag;
 	bool m_waitingforR;
 	bool m_waitingforFiji;
-	wxArrayString m_nlib_list;
-	wxArrayString m_nlib_path_list;
+	std::vector<NBLASTDBListItemData> m_nlib_list;
 	std::vector<wxCheckBox*> m_nlib_chks;
 	wxStaticBoxSizer *m_nlib_box;
+	wxPanel *m_nbpanel;
 };
 
 #endif
