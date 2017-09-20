@@ -1023,14 +1023,14 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 
 	os.Close();
 
+	wxString outdir = txtpath.BeforeLast(wxFILE_SEP_PATH, NULL);
+	wxString prjimg = m_rfpath.BeforeLast(L'.', NULL) + _(".png");
+	wxFileName fn(txtpath);
+	wxString new_prjimg = outdir + wxFILE_SEP_PATH + fn.GetName() + _(".png");
+	wxCopyFile(prjimg, new_prjimg);
+
 	if ((export_swc || export_swcprev || export_mip) && !zip)
 	{
-		wxString outdir = txtpath.BeforeLast(wxFILE_SEP_PATH, NULL);
-		wxString prjimg = m_rfpath.BeforeLast(L'.', NULL) + _(".png");
-		wxFileName fn(txtpath);
-		wxString new_prjimg = outdir + wxFILE_SEP_PATH + fn.GetName() + _(".png");
-		wxCopyFile(prjimg, new_prjimg);
-
 		long item = GetNextItem(-1);
 		if (item != -1)
 		{
