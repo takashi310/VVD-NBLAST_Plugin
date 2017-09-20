@@ -10,6 +10,10 @@
 
 IMPLEMENT_DYNAMIC_CLASS(NBLASTGuiPlugin, wxObject)
 
+bool NBLASTGuiPlugin::m_exp_swc = false;
+bool NBLASTGuiPlugin::m_exp_swcprev = false;
+bool NBLASTGuiPlugin::m_exp_mip = false;
+
 NBLASTGuiPlugin::NBLASTGuiPlugin()
 	: wxGuiPluginBase(NULL, NULL), m_R_process(NULL)
 {
@@ -247,6 +251,14 @@ void NBLASTGuiPlugin::LoadConfigFile()
 				m_rnum = str;
 			else
 				m_rnum = "10";
+
+			bool bval = false;
+			if (fconfig.Read("export_swc", &bval))
+				m_exp_swc = bval;
+			if (fconfig.Read("export_swcprev", &bval))
+				m_exp_swcprev = bval;
+			if (fconfig.Read("export_mip", &bval))
+				m_exp_mip = bval;
 		}
 	}
 }
@@ -259,6 +271,9 @@ void NBLASTGuiPlugin::SaveConfigFile()
 	fconfig.Write("neuronlib_path", m_nlib_path);
 	fconfig.Write("output_dir", m_out_dir);
 	fconfig.Write("rnum", m_rnum);
+	fconfig.Write("export_swc", m_exp_swc);
+	fconfig.Write("export_swcprev", m_exp_swcprev);
+	fconfig.Write("export_mip", m_exp_mip);
 
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
 	expath = expath.BeforeLast(GETSLASH(),NULL);

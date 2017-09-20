@@ -170,6 +170,15 @@ public:
 	DECLARE_EVENT_TABLE()
 };
 
+struct NBLASTListItemData
+{
+	int dbid;
+	wxString name;
+	wxString dbname;
+	int swcid;
+	int mipid;
+	wxString score;
+};
 
 class NBLASTListCtrl : public wxListCtrl, public Notifier
 {
@@ -187,10 +196,15 @@ public:
 		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
 	~NBLASTListCtrl();
 
-	void Append(wxString name, wxString dbname, wxString score, int mipid=-1, int swcid=-1);
+	void Append(wxString name, wxString dbname, wxString score, int mipid=-1, int swcid=-1, int dbid=-1);
 	wxString GetText(long item, int col);
+	int GetImageId(long item, int col);
 	
 	void LoadResults(wxString csvfilepath);
+	void SaveResults(wxString txtpath, bool export_swc=false, bool export_swcprev=false, bool export_mip=false, bool zip=false);
+
+	void DeleteSelection();
+	void DeleteAll();
 
 private:
 	void OnSelect(wxListEvent &event);
@@ -212,7 +226,10 @@ private:
 	wxImageList *m_images;
 	wxStopWatch m_watch;
 	wxArrayString m_dbdirs;
-	std::vector<int> m_dbs;
+	wxArrayString m_dbpaths;
+	wxArrayString m_dbnames;
+	std::vector<NBLASTListItemData> m_listdata;
+	wxString m_rfpath;
 };
 
 
@@ -264,6 +281,9 @@ public:
 	void OnClose(wxCloseEvent& event);
 	void OnInteropMessageReceived(wxCommandEvent & event);
 	void OnOverlayCheck(wxCommandEvent& event);
+	void OnMIPImageExportCheck(wxCommandEvent& event);
+	void OnSWCImageExportCheck(wxCommandEvent& event);
+	void OnSWCExportCheck(wxCommandEvent& event);
 
 ////@end NBLASTGuiPluginWindow event handler declarations
 
@@ -282,6 +302,8 @@ public:
 ////@end NBLASTGuiPluginWindow member function declarations
 
     static bool ShowToolTips();
+
+	static wxWindow* CreateExtraNBLASTControl(wxWindow* parent);
 
 private:
 

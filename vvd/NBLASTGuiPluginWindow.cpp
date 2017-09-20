@@ -797,9 +797,11 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 
 	DeleteAllItems();
 	if (!m_dbdirs.IsEmpty()) m_dbdirs.Clear();
-	if (!m_dbs.empty()) m_dbs.clear();
+	if (!m_dbpaths.IsEmpty()) m_dbpaths.Clear();
+	if (!m_dbnames.IsEmpty()) m_dbnames.Clear();
+	if (!m_listdata.empty()) m_listdata.clear();
+	m_rfpath = csvfilepath;
 
-	wxArrayString dbnames;
 	if ( input.IsOk() && !input.Eof() )
 	{
 		wxString line = text.ReadLine();
@@ -808,10 +810,10 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 		while(tkz.HasMoreTokens())
 		{
 			wxString tk = tkz.GetNextToken();
-			dbnames.Add(tk);
+			m_dbnames.Add(tk);
 		}
 	}
-	wxArrayString nlibs;
+
 	if ( input.IsOk() && !input.Eof() )
 	{
 		wxString line = text.ReadLine();
@@ -820,12 +822,11 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 		while(tkz.HasMoreTokens())
 		{
 			wxString tk = tkz.GetNextToken();
-			nlibs.Add(tk);
+			m_dbpaths.Add(tk);
 			m_dbdirs.Add(tk.BeforeLast(wxFILE_SEP_PATH, NULL));
 		}
 	}
 
-	wxArrayString names, scores;
 	while(input.IsOk() && !input.Eof() )
 	{
 		wxString line = text.ReadLine();
@@ -837,12 +838,15 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 
 		if (con.Count() >= 2)
 		{
-			names.Add(con[0]);
+			NBLASTListItemData data;
+			data.name = con[0];
+
 			int tp = wxAtoi(con[1]);
 			if (tp < 0 || tp >= m_dbdirs.GetCount())
-				tp = 0;
-			m_dbs.push_back(tp);
-			scores.Add(con[2]);
+				tp = -1;
+			data.dbid = tp;
+			data.score = con[2];
+			m_listdata.push_back(data);
 		}
 	}
 
@@ -918,56 +922,65 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 		m_images->Add(dummy, wxBITMAP_TYPE_BMP);
 
 		int imgcount = 0;
-		for (int i = 0; i < names.GetCount(); i++)
+		for (int i = 0; i < m_listdata.size(); i++)
 		{
 			int mipid = 0;
 			int swcid = 0;
-			wxString thumbdir = m_dbdirs[m_dbs[i]] + wxFILE_SEP_PATH + _("MIP_thumb");
-			wxString prevdir = m_dbdirs[m_dbs[i]] + wxFILE_SEP_PATH + _("swc_thumb");
-			if (wxFileExists(thumbdir+wxFILE_SEP_PATH+names[i]+_(".png")))
+			if (m_listdata[i].dbid >= 0 && m_listdata[i].dbid < m_dbdirs.GetCount())
 			{
-				wxBitmap img(thumbdir+wxFILE_SEP_PATH+names[i]+_(".png"), wxBITMAP_TYPE_PNG);
-				if (img.IsOk())
+				wxString thumbdir = m_dbdirs[m_listdata[i].dbid] + wxFILE_SEP_PATH + _("MIP_thumb");
+				wxString prevdir = m_dbdirs[m_listdata[i].dbid] + wxFILE_SEP_PATH + _("swc_thumb");
+				if (wxFileExists(thumbdir+wxFILE_SEP_PATH+m_listdata[i].name+_(".png")))
 				{
-					imgcount++;
-					m_images->Add(img, wxBITMAP_TYPE_PNG);
-					mipid = imgcount;
+					wxBitmap img(thumbdir+wxFILE_SEP_PATH+m_listdata[i].name+_(".png"), wxBITMAP_TYPE_PNG);
+					if (img.IsOk())
+					{
+						imgcount++;
+						m_images->Add(img, wxBITMAP_TYPE_PNG);
+						mipid = imgcount;
+					}
 				}
-			}
-			if (wxFileExists(prevdir+wxFILE_SEP_PATH+names[i]+_(".png")))
-			{
-				wxBitmap img(prevdir+wxFILE_SEP_PATH+names[i]+_(".png"), wxBITMAP_TYPE_PNG);
-				if (img.IsOk())
+				if (wxFileExists(prevdir+wxFILE_SEP_PATH+m_listdata[i].name+_(".png")))
 				{
-					imgcount++;
-					m_images->Add(img, wxBITMAP_TYPE_PNG);
-					swcid = imgcount;
+					wxBitmap img(prevdir+wxFILE_SEP_PATH+m_listdata[i].name+_(".png"), wxBITMAP_TYPE_PNG);
+					if (img.IsOk())
+					{
+						imgcount++;
+						m_images->Add(img, wxBITMAP_TYPE_PNG);
+						swcid = imgcount;
+					}
 				}
 			}
 			wxString dbname;
-			if (m_dbs[i] < dbnames.GetCount())
-				dbname = dbnames[m_dbs[i]];
-			else
+			if (m_listdata[i].dbid >= 0 && m_listdata[i].dbid < m_dbnames.GetCount())
+				dbname = m_dbnames[m_listdata[i].dbid];
+			else if (m_listdata[i].dbid >= 0 && m_listdata[i].dbid < m_dbpaths.GetCount())
 			{
-				wxFileName fn(nlibs[m_dbs[i]]);
+				wxFileName fn(m_dbpaths[m_listdata[i].dbid]);
 				dbname = fn.GetName();
 			}
-			Append(names[i], dbname, scores[i], mipid, swcid);
+			m_listdata[i].swcid = swcid;
+			m_listdata[i].mipid = mipid;
+			m_listdata[i].dbname = dbname;
+			Append(m_listdata[i].name, m_listdata[i].dbname, m_listdata[i].score, m_listdata[i].mipid, m_listdata[i].swcid, m_listdata[i].dbid);
 		}
 	}
 	else
 	{
-		for (int i = 0; i < names.GetCount(); i++)
+		for (int i = 0; i < m_listdata.size(); i++)
 		{
 			wxString dbname;
-			if (m_dbs[i] < dbnames.GetCount())
-				dbname = dbnames[m_dbs[i]];
-			else
+			if (m_listdata[i].dbid >= 0 && m_listdata[i].dbid < m_dbnames.GetCount())
+				dbname = m_dbnames[m_listdata[i].dbid];
+			else if (m_listdata[i].dbid >= 0 && m_listdata[i].dbid < m_dbpaths.GetCount())
 			{
-				wxFileName fn(nlibs[m_dbs[i]]);
+				wxFileName fn(m_dbpaths[m_listdata[i].dbid]);
 				dbname = fn.GetName();
 			}
-			Append(names[i], dbname, scores[i]);
+			m_listdata[i].swcid = -1;
+			m_listdata[i].mipid = -1;
+			m_listdata[i].dbname = dbname;
+			Append(m_listdata[i].name, m_listdata[i].dbname, m_listdata[i].score, m_listdata[i].mipid, m_listdata[i].swcid, m_listdata[i].dbid);
 		}
 	}
 
@@ -988,6 +1001,93 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 		SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
 }
 
+void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_swcprev, bool export_mip, bool zip)
+{
+	wxFileOutputStream os(txtpath);
+	wxTextOutputStream tos(os);
+
+	for (int i = 0; i < m_dbnames.GetCount()-1; i++)
+		tos << m_dbnames[i] << ",";
+	if (m_dbnames.GetCount() > 0) tos << m_dbnames[m_dbnames.GetCount()-1] << endl;
+	for (int i = 0; i < m_dbpaths.GetCount()-1; i++)
+		tos << m_dbpaths[i] << ",";
+	if (m_dbpaths.GetCount() > 0) tos << m_dbpaths[m_dbpaths.GetCount()-1] << endl;
+
+	long item = GetNextItem(-1);
+	if (item != -1)
+	{
+		do{
+			tos << GetText(item, 1) << "," << GetText(item, 0) << "," << GetText(item, 5) << endl;
+		} while ((item = GetNextItem(item, wxLIST_NEXT_BELOW)) != -1);
+	}
+
+	os.Close();
+
+	if ((export_swc || export_swcprev || export_mip) && !zip)
+	{
+		wxString outdir = txtpath.BeforeLast(wxFILE_SEP_PATH, NULL);
+		wxString prjimg = m_rfpath.BeforeLast(L'.', NULL) + _(".png");
+		wxFileName fn(txtpath);
+		wxString new_prjimg = outdir + wxFILE_SEP_PATH + fn.GetName() + _(".png");
+		wxCopyFile(prjimg, new_prjimg);
+
+		long item = GetNextItem(-1);
+		if (item != -1)
+		{
+			do
+			{
+				wxString dbidstr = GetText(item, 0);
+				int dbid = wxAtoi(dbidstr);
+				if (dbid >= 0 && dbid < m_dbdirs.GetCount())
+				{
+					wxString name = GetText(item, 1);
+					if (export_swcprev)
+					{
+						wxString imgpath1 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc_prev") + wxFILE_SEP_PATH + name + _(".png");
+						wxString new_imgpath1 = outdir + wxFILE_SEP_PATH + name + _("_swc.png");
+						if (wxFileExists(imgpath1)) wxCopyFile(imgpath1, new_imgpath1);
+					}
+					if (export_mip)
+					{
+						wxString imgpath2 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("MIP") + wxFILE_SEP_PATH + name + _(".png");
+						wxString new_imgpath2 = outdir + wxFILE_SEP_PATH + name + _("_mip.png");
+						if (wxFileExists(imgpath2)) wxCopyFile(imgpath2, new_imgpath2);
+					}
+					if (export_swc)
+					{
+						wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
+						wxString new_swcpath = outdir + wxFILE_SEP_PATH + name + _(".swc");
+						if (wxFileExists(swcpath)) wxCopyFile(swcpath, new_swcpath);
+					}
+				}
+			} while ((item = GetNextItem(item, wxLIST_NEXT_BELOW)) != -1);
+		}
+	}
+
+}
+
+void NBLASTListCtrl::DeleteSelection()
+{
+	long item = GetNextItem(-1,
+		wxLIST_NEXT_ALL,
+		wxLIST_STATE_SELECTED);
+	if (item != -1)
+	{
+		long sel = item;
+		if (GetNextItem(item, wxLIST_NEXT_BELOW) == -1)
+			sel = GetNextItem(item, wxLIST_NEXT_ABOVE);
+		DeleteItem(item);
+		if (sel != -1)
+			SetItemState(sel, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
+	}
+}
+
+void NBLASTListCtrl::DeleteAll()
+{
+	DeleteAllItems();
+}
+
+
 void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
 {
 	if ( event.GetColumn() == 0 )
@@ -996,9 +1096,10 @@ void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
     }
 }
 
-void NBLASTListCtrl::Append(wxString name, wxString dbname, wxString score, int mipid, int swcid)
+void NBLASTListCtrl::Append(wxString name, wxString dbname, wxString score, int mipid, int swcid, int dbid)
 {
-	long tmp = InsertItem(GetItemCount(), _(""));
+	wxString dbidstr = wxString::Format(wxT("%i"), dbid);
+	long tmp = InsertItem(GetItemCount(), dbidstr);
 	SetItem(tmp, 1, name);
 	SetItem(tmp, 2, dbname);
 	SetItem(tmp, 3, _(""), swcid);
@@ -1016,19 +1117,34 @@ wxString NBLASTListCtrl::GetText(long item, int col)
 	return info.GetText();
 }
 
+int NBLASTListCtrl::GetImageId(long item, int col)
+{
+	wxListItem info;
+	info.SetId(item);
+	info.SetColumn(col);
+	info.SetMask(wxLIST_MASK_IMAGE);
+	GetItem(info);
+	return info.GetImage();
+}
+
 void NBLASTListCtrl::OnSelect(wxListEvent &event)
 {
 	long item = GetNextItem(-1,
 		wxLIST_NEXT_ALL,
 		wxLIST_STATE_SELECTED);
 
-	if (item >= 0 && item < m_dbs.size())
+	if (item != -1)
 	{
-		wxString name = GetText(item, 1);
-		wxString imgpath1 = m_dbdirs[m_dbs[item]] + wxFILE_SEP_PATH + _("swc_prev") + wxFILE_SEP_PATH + name + _(".png");
-		wxString imgpath2 = m_dbdirs[m_dbs[item]] + wxFILE_SEP_PATH + _("MIP") + wxFILE_SEP_PATH + name + _(".png");
-		wxString imgpaths = imgpath1 + _(",") + imgpath2;
-		notifyAll(NB_SET_IMAGE, imgpaths.ToStdString().c_str(), imgpaths.ToStdString().length()+1);
+		wxString dbidstr = GetText(item, 0);
+		int dbid = wxAtoi(dbidstr);
+		if (dbid >= 0 && dbid < m_dbdirs.GetCount())
+		{
+			wxString name = GetText(item, 1);
+			wxString imgpath1 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc_prev") + wxFILE_SEP_PATH + name + _(".png");
+			wxString imgpath2 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("MIP") + wxFILE_SEP_PATH + name + _(".png");
+			wxString imgpaths = imgpath1 + _(",") + imgpath2;
+			notifyAll(NB_SET_IMAGE, imgpaths.ToStdString().c_str(), imgpaths.ToStdString().length()+1);
+		}
 	}
 }
 
@@ -1038,11 +1154,16 @@ void NBLASTListCtrl::OnAct(wxListEvent &event)
 	long item = GetNextItem(-1,
 		wxLIST_NEXT_ALL,
 		wxLIST_STATE_SELECTED);
-	if (item >= 0 && item < m_dbs.size())
+	if (item != -1)
 	{
-		wxString name = GetText(item, 1);
-		wxString swcpath = m_dbdirs[m_dbs[item]] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
-		notifyAll(NB_OPEN_FILE, swcpath.ToStdString().c_str(), swcpath.ToStdString().length()+1);
+		wxString dbidstr = GetText(item, 0);
+		int dbid = wxAtoi(dbidstr);
+		if (dbid >= 0 && dbid < m_dbdirs.GetCount())
+		{
+			wxString name = GetText(item, 1);
+			wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
+			notifyAll(NB_OPEN_FILE, swcpath.ToStdString().c_str(), swcpath.ToStdString().length()+1);
+		}
 	}
 }
 
@@ -1063,6 +1184,9 @@ void NBLASTListCtrl::OnScroll(wxMouseEvent& event)
 
 void NBLASTListCtrl::OnKeyDown(wxKeyEvent& event)
 {
+	if ( event.GetKeyCode() == WXK_DELETE ||
+		event.GetKeyCode() == WXK_BACK)
+		DeleteSelection();
 	event.Skip();
 }
 
@@ -1169,7 +1293,10 @@ NBLASTGuiPluginWindow::~NBLASTGuiPluginWindow()
 
 		plugin->SaveConfigFile();
 	}
-
+	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
+	for (int i = 0; i < m_nlib_chks.size(); i++)
+		dbdlg.setState(i, m_nlib_chks[i]->GetValue());
+	dbdlg.SaveList();
 }
 
 
@@ -1304,6 +1431,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	{
 		m_nlib_chks.push_back(new wxCheckBox(nbpanel, wxID_ANY, m_nlib_list[i].name));
 		gs->Add(m_nlib_chks[i], 0, wxALIGN_CENTER);
+		m_nlib_chks[i]->SetValue(m_nlib_list[i].state);
 	}
 	m_nlib_box->Add(gs, 0, wxALIGN_CENTER|wxALL, 10);
 	//itemBoxSizer2->Add(m_nlib_box, 0, wxALIGN_CENTER);
@@ -1317,14 +1445,14 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizer2_2, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
     
 	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
-	m_SkeletonizeButton = new wxButton( nbpanel, ID_SKELETONIZE_BUTTON, _("Skeletonize"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_SkeletonizeButton = new wxButton( nbpanel, ID_SKELETONIZE_BUTTON, _("Save Results"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_CommandButton = new wxButton( nbpanel, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerb->Add(m_SkeletonizeButton);
-//	sizerb->Add(75, 10);
 	sizerb->Add(m_CommandButton);
+	sizerb->Add(75, 10);
+	sizerb->Add(m_SkeletonizeButton);
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
-	m_SkeletonizeButton->Hide();
+	//m_SkeletonizeButton->Hide();
 
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
 	m_results = new NBLASTListCtrl(nbpanel, wxID_ANY, wxDefaultPosition, wxSize(590, 500));
@@ -1591,10 +1719,86 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
     event.Skip();
 }
 
+wxWindow* NBLASTGuiPluginWindow::CreateExtraNBLASTControl(wxWindow* parent)
+{
+	wxPanel* panel = new wxPanel(parent, 0, wxDefaultPosition, wxSize(500, 50));
+
+	wxBoxSizer *group1 = new wxStaticBoxSizer(
+		new wxStaticBox(panel, wxID_ANY, "Additional Options"), wxHORIZONTAL);
+
+	wxCheckBox* ch1 = new wxCheckBox(panel, wxID_HIGHEST+10051, "Export SWC skeletones");
+	ch1->Connect(ch1->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnSWCExportCheck), NULL, panel);
+	if (ch1)
+		ch1->SetValue(NBLASTGuiPlugin::GetExportSWCs());
+
+	wxCheckBox* ch2 = new wxCheckBox(panel, wxID_HIGHEST+10052, "Export MIP images");
+	ch2->Connect(ch2->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnMIPImageExportCheck), NULL, panel);
+	if (ch2)
+		ch2->SetValue(NBLASTGuiPlugin::GetExportMIPs());
+
+	wxCheckBox* ch3 = new wxCheckBox(panel, wxID_HIGHEST+10053, "Export preview images");
+	ch3->Connect(ch3->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnSWCImageExportCheck), NULL, panel);
+	if (ch3)
+		ch3->SetValue(NBLASTGuiPlugin::GetExportSWCPrevImgs());
+
+	//group
+	group1->Add(10, 10);
+	group1->Add(ch1);
+	group1->Add(20, 10);
+	group1->Add(ch2);
+	group1->Add(20, 10);
+	group1->Add(ch3);
+	group1->Add(20, 10);
+	
+	panel->SetSizer(group1);
+	panel->Layout();
+
+	return panel;
+}
+
+void NBLASTGuiPluginWindow::OnSWCExportCheck(wxCommandEvent& event)
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	wxCheckBox* ch1 = (wxCheckBox*)event.GetEventObject();
+
+	if (ch1 && plugin)
+		plugin->SetExportSWCs(ch1->GetValue());
+}
+
+void NBLASTGuiPluginWindow::OnMIPImageExportCheck(wxCommandEvent& event)
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	wxCheckBox* ch2 = (wxCheckBox*)event.GetEventObject();
+
+	if (ch2 && plugin)
+		plugin->SetExportMIPs(ch2->GetValue());
+}
+
+void NBLASTGuiPluginWindow::OnSWCImageExportCheck(wxCommandEvent& event)
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	wxCheckBox* ch3 = (wxCheckBox*)event.GetEventObject();
+
+	if (ch3 && plugin)
+		plugin->SetExportSWCPrevImgs(ch3->GetValue());
+}
+
 void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
 {
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
-	if (plugin) plugin->skeletonizeMask();
+//	if (plugin) plugin->skeletonizeMask();
+
+	if (!m_results || !plugin)
+		return;
+
+	wxFileDialog file_dlg(this, "Save Results", "", "", "*.txt", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
+	file_dlg.SetExtraControlCreator(CreateExtraNBLASTControl);
+	int rval = file_dlg.ShowModal();
+	if (rval == wxID_OK)
+		m_results->SaveResults(file_dlg.GetPath(), plugin->GetExportSWCs(), plugin->GetExportSWCPrevImgs(), plugin->GetExportMIPs());
 }
 
 void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )

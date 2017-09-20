@@ -35,6 +35,12 @@ public:
 	wxString GetResultNum() { return m_rnum; }
 	void SetDatabaseNames(wxString num) { m_db_names = num; }
 	wxString GetDatabaseNames() { return m_db_names; }
+	static void SetExportMIPs(bool val) { m_exp_mip = val; }
+	static bool GetExportMIPs() { return m_exp_mip; }
+	static void SetExportSWCPrevImgs(bool val) { m_exp_swcprev = val; }
+	static bool GetExportSWCPrevImgs() { return m_exp_swcprev; }
+	static void SetExportSWCs(bool val) { m_exp_swc = val; }
+	static bool GetExportSWCs() { return m_exp_swc; }
 
 	wxString GetPID() { return m_pid; }
 
@@ -60,4 +66,7 @@ private:
 	wxStopWatch m_watch;
 	wxString m_pid;
 	wxProcess *m_R_process;
+	static bool m_exp_swc;
+	static bool m_exp_swcprev;
+	static bool m_exp_mip;
 };
