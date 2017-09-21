@@ -530,11 +530,12 @@ void wxDBListDialog::SaveList()
 	wxFileOutputStream os(listpath);
 	wxTextOutputStream tos(os);
 	vector<NBLASTDBListItemData> list = m_list->getList();
-	
-	for (int i = 0; i < list.size()-1; i++)
-		tos << list[i].name << "\t" << list[i].path << "\t" << (list[i].state ? "true" : "false") << endl;
 	if (list.size() > 0)
+	{
+		for (int i = 0; i < list.size()-1; i++)
+			tos << list[i].name << "\t" << list[i].path << "\t" << (list[i].state ? "true" : "false") << endl;
 		tos << list[list.size()-1].name << "\t" << list[list.size()-1].path << "\t" << (list[list.size()-1].state ? "true" : "false");
+	}
 }
 
 void wxDBListDialog::OnAddButtonClick( wxCommandEvent& event )
@@ -1006,12 +1007,18 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 	wxFileOutputStream os(txtpath);
 	wxTextOutputStream tos(os);
 
-	for (int i = 0; i < m_dbnames.GetCount()-1; i++)
-		tos << m_dbnames[i] << ",";
-	if (m_dbnames.GetCount() > 0) tos << m_dbnames[m_dbnames.GetCount()-1] << endl;
-	for (int i = 0; i < m_dbpaths.GetCount()-1; i++)
-		tos << m_dbpaths[i] << ",";
-	if (m_dbpaths.GetCount() > 0) tos << m_dbpaths[m_dbpaths.GetCount()-1] << endl;
+	if (m_dbnames.GetCount() > 0)
+	{
+		for (int i = 0; i < m_dbnames.GetCount()-1; i++)
+			tos << m_dbnames[i] << ",";
+		tos << m_dbnames[m_dbnames.GetCount()-1] << endl;
+	}
+	if (m_dbpaths.GetCount() > 0)
+	{
+		for (int i = 0; i < m_dbpaths.GetCount()-1; i++)
+			tos << m_dbpaths[i] << ",";
+		tos << m_dbpaths[m_dbpaths.GetCount()-1] << endl;
+	}
 
 	long item = GetNextItem(-1);
 	if (item != -1)
@@ -1638,13 +1645,13 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 	}
 
 	wxString nlibpath, nlibname;
-	for (int i=0; i < nlibs.Count()-1; i++)
-	{
-		nlibpath += nlibs[i] + wxT(",");
-		nlibname += nlibnames[i] + wxT(",");
-	}
 	if (nlibs.Count() > 0)
 	{
+		for (int i=0; i < nlibs.Count()-1; i++)
+		{
+			nlibpath += nlibs[i] + wxT(",");
+			nlibname += nlibnames[i] + wxT(",");
+		}
 		nlibpath += nlibs[nlibs.Count()-1];
 		nlibname += nlibnames[nlibs.Count()-1];
 	}
