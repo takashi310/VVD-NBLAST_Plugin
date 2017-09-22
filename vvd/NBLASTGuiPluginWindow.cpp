@@ -1002,7 +1002,7 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 		SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
 }
 
-void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_swcprev, bool export_mip, bool zip)
+void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_swcprev, bool export_mip, bool pfx_score, bool pfx_db, bool zip)
 {
 	wxFileOutputStream os(txtpath);
 	wxTextOutputStream tos(os);
@@ -1048,22 +1048,38 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 				if (dbid >= 0 && dbid < m_dbdirs.GetCount())
 				{
 					wxString name = GetText(item, 1);
+					wxString prefix;
+					if (pfx_score)
+					{
+						wxString scstr = GetText(item, 5);
+						double sc = 1.0;
+						if(scstr.ToDouble(&sc))
+						{
+							int pfsc = (int)(floor(sc * 100000.0 + 0.5));
+							prefix += wxString::Format(wxT("%i"), pfsc) + _(" ");
+						}
+					}
+					if (pfx_db)
+					{
+						prefix += m_dbnames[dbid] + _(" ");
+					}
+
 					if (export_swcprev)
 					{
 						wxString imgpath1 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc_prev") + wxFILE_SEP_PATH + name + _(".png");
-						wxString new_imgpath1 = outdir + wxFILE_SEP_PATH + name + _("_swc.png");
+						wxString new_imgpath1 = outdir + wxFILE_SEP_PATH + prefix + name + _("_swc.png");
 						if (wxFileExists(imgpath1)) wxCopyFile(imgpath1, new_imgpath1);
 					}
 					if (export_mip)
 					{
 						wxString imgpath2 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("MIP") + wxFILE_SEP_PATH + name + _(".png");
-						wxString new_imgpath2 = outdir + wxFILE_SEP_PATH + name + _("_mip.png");
+						wxString new_imgpath2 = outdir + wxFILE_SEP_PATH + prefix + name + _("_mip.png");
 						if (wxFileExists(imgpath2)) wxCopyFile(imgpath2, new_imgpath2);
 					}
 					if (export_swc)
 					{
 						wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
-						wxString new_swcpath = outdir + wxFILE_SEP_PATH + name + _(".swc");
+						wxString new_swcpath = outdir + wxFILE_SEP_PATH + prefix + name + _(".swc");
 						if (wxFileExists(swcpath)) wxCopyFile(swcpath, new_swcpath);
 					}
 				}
@@ -1728,11 +1744,13 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 
 wxWindow* NBLASTGuiPluginWindow::CreateExtraNBLASTControl(wxWindow* parent)
 {
-	wxPanel* panel = new wxPanel(parent, 0, wxDefaultPosition, wxSize(500, 50));
+	wxPanel* panel = new wxPanel(parent, 0, wxDefaultPosition, wxSize(500, 90));
 
-	wxBoxSizer *group1 = new wxStaticBoxSizer(
-		new wxStaticBox(panel, wxID_ANY, "Additional Options"), wxHORIZONTAL);
+	wxBoxSizer *sizer = new wxStaticBoxSizer(
+		new wxStaticBox(panel, wxID_ANY, "Additional Options"), wxVERTICAL);
 
+	wxBoxSizer *group1 = new wxBoxSizer(wxHORIZONTAL);
+	
 	wxCheckBox* ch1 = new wxCheckBox(panel, wxID_HIGHEST+10051, "Export SWC skeletones");
 	ch1->Connect(ch1->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
 		wxCommandEventHandler(NBLASTGuiPluginWindow::OnSWCExportCheck), NULL, panel);
@@ -1759,8 +1777,37 @@ wxWindow* NBLASTGuiPluginWindow::CreateExtraNBLASTControl(wxWindow* parent)
 	group1->Add(20, 10);
 	group1->Add(ch3);
 	group1->Add(20, 10);
+
+	wxBoxSizer *group2 = new wxBoxSizer(wxHORIZONTAL);
+
+	wxStaticText *st = new wxStaticText(panel, 0, "File Name Prefix:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	
-	panel->SetSizer(group1);
+	wxCheckBox* ch4 = new wxCheckBox(panel, wxID_HIGHEST+10054, "Score");
+	ch4->Connect(ch4->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnScorePrefixCheck), NULL, panel);
+	if (ch4)
+		ch4->SetValue(NBLASTGuiPlugin::GetPrefixScore());
+	
+	wxCheckBox* ch5 = new wxCheckBox(panel, wxID_HIGHEST+10055, "Database");
+	ch5->Connect(ch5->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnDatabasePrefixCheck), NULL, panel);
+	if (ch5)
+		ch5->SetValue(NBLASTGuiPlugin::GetPrefixDatabase());
+
+	group2->Add(10, 10);
+	group2->Add(st);
+	group2->Add(20, 10);
+	group2->Add(ch4);
+	group2->Add(20, 10);
+	group2->Add(ch5);
+	group2->Add(20, 10);
+
+	sizer->Add(10, 10);
+	sizer->Add(group1);
+	sizer->Add(15, 15);
+	sizer->Add(group2);
+	
+	panel->SetSizer(sizer);
 	panel->Layout();
 
 	return panel;
@@ -1793,6 +1840,24 @@ void NBLASTGuiPluginWindow::OnSWCImageExportCheck(wxCommandEvent& event)
 		plugin->SetExportSWCPrevImgs(ch3->GetValue());
 }
 
+void NBLASTGuiPluginWindow::OnScorePrefixCheck(wxCommandEvent& event)
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	wxCheckBox* ch4 = (wxCheckBox*)event.GetEventObject();
+
+	if (ch4 && plugin)
+		plugin->SetPrefixScore(ch4->GetValue());
+}
+
+void NBLASTGuiPluginWindow::OnDatabasePrefixCheck(wxCommandEvent& event)
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	wxCheckBox* ch5 = (wxCheckBox*)event.GetEventObject();
+
+	if (ch5 && plugin)
+		plugin->SetPrefixDatabase(ch5->GetValue());
+}
+
 void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
 {
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
@@ -1805,7 +1870,7 @@ void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
 	file_dlg.SetExtraControlCreator(CreateExtraNBLASTControl);
 	int rval = file_dlg.ShowModal();
 	if (rval == wxID_OK)
-		m_results->SaveResults(file_dlg.GetPath(), plugin->GetExportSWCs(), plugin->GetExportSWCPrevImgs(), plugin->GetExportMIPs());
+		m_results->SaveResults(file_dlg.GetPath(), plugin->GetExportSWCs(), plugin->GetExportSWCPrevImgs(), plugin->GetExportMIPs(), plugin->GetPrefixScore(), plugin->GetPrefixDatabase());
 }
 
 void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )

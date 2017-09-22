@@ -41,6 +41,10 @@ public:
 	static bool GetExportSWCPrevImgs() { return m_exp_swcprev; }
 	static void SetExportSWCs(bool val) { m_exp_swc = val; }
 	static bool GetExportSWCs() { return m_exp_swc; }
+	static void SetPrefixScore(bool val) { m_pfx_score = val; }
+	static bool GetPrefixScore() { return m_pfx_score; }
+	static void SetPrefixDatabase(bool val) { m_pfx_db = val; }
+	static bool GetPrefixDatabase() { return m_pfx_db; }
 
 	wxString GetPID() { return m_pid; }
 
@@ -69,4 +73,6 @@ private:
 	static bool m_exp_swc;
 	static bool m_exp_swcprev;
 	static bool m_exp_mip;
+	static bool m_pfx_score;
+	static bool m_pfx_db;
 };

@@ -201,7 +201,7 @@ public:
 	int GetImageId(long item, int col);
 	
 	void LoadResults(wxString csvfilepath);
-	void SaveResults(wxString txtpath, bool export_swc=false, bool export_swcprev=false, bool export_mip=false, bool zip=false);
+	void SaveResults(wxString txtpath, bool export_swc=false, bool export_swcprev=false, bool export_mip=false, bool pfx_score=false, bool pfx_db=false, bool zip=false);
 
 	void DeleteSelection();
 	void DeleteAll();
@@ -284,6 +284,8 @@ public:
 	void OnMIPImageExportCheck(wxCommandEvent& event);
 	void OnSWCImageExportCheck(wxCommandEvent& event);
 	void OnSWCExportCheck(wxCommandEvent& event);
+	void OnScorePrefixCheck(wxCommandEvent& event);
+	void OnDatabasePrefixCheck(wxCommandEvent& event);
 
 ////@end NBLASTGuiPluginWindow event handler declarations
 
