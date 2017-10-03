@@ -158,14 +158,14 @@ bool NBLASTGuiPlugin::LoadSWC(wxString name, wxString swc_zip_path)
 	return true;
 }
 
-bool NBLASTGuiPlugin::LoadSWC(wxString path)
+bool NBLASTGuiPlugin::LoadFiles(wxString path)
 {
 	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
 	if (!vframe) return false;
 
 	wxArrayString arr;
 	arr.Add(path);
-	vframe->LoadMeshes(arr);
+	vframe->StartupLoad(arr);
 
 	return true;
 }

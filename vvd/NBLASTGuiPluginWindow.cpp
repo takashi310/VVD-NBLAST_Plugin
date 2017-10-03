@@ -738,13 +738,12 @@ void wxImagePanel::OnSize(wxSizeEvent& event)
 
 
 BEGIN_EVENT_TABLE(NBLASTListCtrl, wxListCtrl)
-	EVT_LIST_ITEM_ACTIVATED(wxID_ANY, NBLASTListCtrl::OnAct)
 	EVT_LIST_ITEM_SELECTED(wxID_ANY, NBLASTListCtrl::OnSelect)
 	EVT_LIST_COL_BEGIN_DRAG(wxID_ANY, NBLASTListCtrl::OnColBeginDrag)
 	EVT_KEY_DOWN(NBLASTListCtrl::OnKeyDown)
 	EVT_KEY_UP(NBLASTListCtrl::OnKeyUp)
 	EVT_MOUSE_EVENTS(NBLASTListCtrl::OnMouse)
-
+	EVT_LEFT_DCLICK(NBLASTListCtrl::OnLeftDClick)
 END_EVENT_TABLE()
 
 NBLASTListCtrl::NBLASTListCtrl(
@@ -767,10 +766,10 @@ NBLASTListCtrl::NBLASTListCtrl(
 	itemCol.SetText("Database");
 	this->InsertColumn(2, itemCol);
 
-	itemCol.SetText("Preview");
+	itemCol.SetText("Skeleton");
 	this->InsertColumn(3, itemCol);
 
-	itemCol.SetText("Color-MIP");
+	itemCol.SetText("Volume Data");
 	this->InsertColumn(4, itemCol);
 	
 	itemCol.SetText("Score");
@@ -1170,7 +1169,7 @@ void NBLASTListCtrl::OnSelect(wxListEvent &event)
 		}
 	}
 }
-
+/*
 void NBLASTListCtrl::OnAct(wxListEvent &event)
 {
 	int index = 0;
@@ -1189,7 +1188,7 @@ void NBLASTListCtrl::OnAct(wxListEvent &event)
 		}
 	}
 }
-
+*/
 void NBLASTListCtrl::OnMouse(wxMouseEvent &event)
 {
 	event.Skip();
@@ -1218,7 +1217,39 @@ void NBLASTListCtrl::OnKeyUp(wxKeyEvent& event)
 	event.Skip();
 }
 
+void NBLASTListCtrl::OnLeftDClick(wxMouseEvent& event)
+{
+	long item = GetNextItem(-1,
+		wxLIST_NEXT_ALL,
+		wxLIST_STATE_SELECTED);
+	if (item != -1)
+	{
+		wxPoint pos = event.GetPosition();
+		wxRect rect_swc, rect_vol;
+		GetSubItemRect(item, 3, rect_swc);
+		GetSubItemRect(item, 4, rect_vol);
 
+		wxString dbidstr = GetText(item, 0);
+		int dbid = wxAtoi(dbidstr);
+		if (dbid >= 0 && dbid < m_dbdirs.GetCount())
+		{
+			if (rect_swc.Contains(pos))
+			{
+				wxString name = GetText(item, 1);
+				wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
+				if (wxFileExists(swcpath))
+					notifyAll(NB_OPEN_FILE, swcpath.ToStdString().c_str(), swcpath.ToStdString().length()+1);
+			}
+			else if (rect_vol.Contains(pos))
+			{
+				wxString name = GetText(item, 1);
+				wxString volpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("volume") + wxFILE_SEP_PATH + name + _(".nrrd");
+				if (wxFileExists(volpath))
+					notifyAll(NB_OPEN_FILE, volpath.ToStdString().c_str(), volpath.ToStdString().length()+1);
+			}
+		}
+	}
+}
 
 /*
  * NBLASTGuiPluginWindow type definition
@@ -1605,10 +1636,7 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 		if (plugin && m_resultPickCtrl)
 		{
 			wxString str = wxString((char *)info->data);
-/*			wxString zip =  m_resultPickCtrl->GetPath().BeforeLast(L'.', NULL) + _(".zip");
-			plugin->LoadSWC(str, zip);
-*/
-			plugin->LoadSWC(str);
+			plugin->LoadFiles(str);
 		}
 		break;
 	case NB_SET_IMAGE:

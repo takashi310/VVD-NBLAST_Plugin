@@ -208,13 +208,14 @@ public:
 
 private:
 	void OnSelect(wxListEvent &event);
-	void OnAct(wxListEvent &event);
+	//void OnAct(wxListEvent &event);
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
 	void OnMouse(wxMouseEvent& event);
 	void OnScroll(wxScrollWinEvent& event);
 	void OnScroll(wxMouseEvent& event);
 	void OnColBeginDrag(wxListEvent& event);
+	void OnLeftDClick(wxMouseEvent& event);
 	
 	DECLARE_EVENT_TABLE()
 protected: //Possible TODO

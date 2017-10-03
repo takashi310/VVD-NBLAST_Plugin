@@ -54,7 +54,7 @@ public:
 	bool runNBLAST();
 	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString());
 	bool LoadSWC(wxString name, wxString swc_zip_path);
-	bool LoadSWC(wxString path);
+	bool LoadFiles(wxString path);
 	bool skeletonizeMask();
 
 	void OnTimer(wxTimerEvent& event);
