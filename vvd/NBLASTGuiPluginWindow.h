@@ -202,6 +202,7 @@ public:
 	
 	void LoadResults(wxString csvfilepath);
 	void SaveResults(wxString txtpath, bool export_swc=false, bool export_swcprev=false, bool export_mip=false, bool pfx_score=false, bool pfx_db=false, bool zip=false);
+	wxString GetListFilePath() {return m_rfpath;}
 
 	void DeleteSelection();
 	void DeleteAll();
@@ -233,6 +234,34 @@ private:
 	wxString m_rfpath;
 };
 
+class wxNBLASTSettingDialog : public wxDialog
+{
+	enum
+	{
+		ID_AddButton = wxID_HIGHEST+12201,
+		ID_NBS_RPicker,
+		ID_NBS_TempDirPicker,
+		ID_NBS_ResultNumText
+	};
+
+public:
+	wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+					const wxPoint &pos = wxDefaultPosition,
+					const wxSize &size = wxDefaultSize,
+					long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
+	void LoadSettings();
+	void SaveSettings();
+
+private:
+	wxFilePickerCtrl* m_RPickCtrl;
+	wxDirPickerCtrl* m_tmpdirPickCtrl;
+	wxTextCtrl* m_rnumTextCtrl;
+public:
+	void OnOk( wxCommandEvent& event );
+
+	DECLARE_EVENT_TABLE();
+};
 
 class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 {    
@@ -251,8 +280,9 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_NB_OverlayCheckBox,
 		ID_SEND_EVENT_BUTTON,
 		ID_EDIT_DB_BUTTON,
-		ID_SKELETONIZE_BUTTON,
-		ID_RELOAD_RESULTS_BUTTON,
+		ID_SAVE_BUTTON,
+		ID_IMPORT_RESULTS_BUTTON,
+		ID_SETTING,
 		ID_WaitTimer
 	};
 
@@ -276,9 +306,10 @@ public:
 ////@begin NBLASTGuiPluginWindow event handler declarations
 
     void OnSENDEVENTBUTTONClick( wxCommandEvent& event );
-	void OnReloadResultsButtonClick( wxCommandEvent& event );
+	void OnImportResultsButtonClick( wxCommandEvent& event );
+	void OnSettingButtonClick( wxCommandEvent& event );
 	void OnEditDBButtonClick( wxCommandEvent& event );
-	void OnSkeletonizeButtonClick( wxCommandEvent& event );
+	void OnSaveButtonClick( wxCommandEvent& event );
 	void OnClose(wxCloseEvent& event);
 	void OnInteropMessageReceived(wxCommandEvent & event);
 	void OnOverlayCheck(wxCommandEvent& event);
@@ -316,14 +347,10 @@ private:
 	wxDirPickerCtrl* m_outdirPickCtrl;
 	wxTextCtrl* m_ofnameTextCtrl;
 	wxTextCtrl* m_rnumTextCtrl;
-	wxFilePickerCtrl* m_resultPickCtrl;
 	NBLASTListCtrl* m_results;
 	wxImagePanel* m_swcImagePanel;
 	wxImagePanel* m_mipImagePanel;
-	wxButton* m_SkeletonizeButton;
 	wxButton* m_CommandButton;
-	wxButton* m_EditDBButton;
-	wxButton* m_ReloadResultButton;
 	wxCheckBox* m_overlayChk;
 	wxTimer* m_wtimer;
 	wxProgressDialog* m_prg_diag;
@@ -333,6 +360,7 @@ private:
 	std::vector<wxCheckBox*> m_nlib_chks;
 	wxStaticBoxSizer *m_nlib_box;
 	wxPanel *m_nbpanel;
+	wxToolBar *m_tb;
 };
 
 #endif

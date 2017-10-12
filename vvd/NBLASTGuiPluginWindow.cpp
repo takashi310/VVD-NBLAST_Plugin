@@ -19,6 +19,9 @@
 #include <wx/dcbuffer.h>
 #include <wx/valnum.h>
 #include <wx/filename.h>
+#include <wx/statline.h>
+#include "Formats/png_resource.h"
+#include "img/icons.h"
 
 BEGIN_EVENT_TABLE(NBLASTDatabaseListCtrl, wxListCtrl)
 	EVT_LIST_ITEM_DESELECTED(wxID_ANY, NBLASTDatabaseListCtrl::OnEndSelection)
@@ -432,8 +435,8 @@ wxDBListDialog::wxDBListDialog(wxWindow* parent, wxWindowID id, const wxString &
 	wxBoxSizer* itemBoxSizer = new wxBoxSizer(wxVERTICAL);
 
 	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
-	wxStaticText *st = new wxStaticText(this, 0, "Neuron Library (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_new_db_pick = new wxFilePickerCtrl(this, ID_NewDBPick, "", _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxSize(400, -1));
+	wxStaticText *st = new wxStaticText(this, 0, "NBLAST Database (.rds):", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	m_new_db_pick = new wxFilePickerCtrl(this, ID_NewDBPick, "", _("Choose a NBLAST database"), "*.rds", wxDefaultPosition, wxSize(400, -1));
 	sizer1->Add(5, 10);
 	sizer1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer1->Add(5, 10);
@@ -442,7 +445,7 @@ wxDBListDialog::wxDBListDialog(wxWindow* parent, wxWindowID id, const wxString &
 	itemBoxSizer->Add(5, 5);
 	itemBoxSizer->Add(sizer1, 0, wxEXPAND);
 		
-	m_add_button = new wxButton( this, ID_AddButton, _("Add Library"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_add_button = new wxButton( this, ID_AddButton, _("Add Database"), wxDefaultPosition, wxDefaultSize, 0 );
 	itemBoxSizer->Add(10, 5);
 	itemBoxSizer->Add(m_add_button, 0, wxALIGN_CENTER_HORIZONTAL, 5);
 
@@ -777,7 +780,7 @@ NBLASTListCtrl::NBLASTListCtrl(
 	this->InsertColumn(5, itemCol);
 
 	SetColumnWidth(0, 0);
-	SetColumnWidth(1, 180);
+	SetColumnWidth(1, 110);
 	SetColumnWidth(2, 100);
 	SetColumnWidth(3, 150);
 	SetColumnWidth(4, 150);
@@ -983,7 +986,7 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 			Append(m_listdata[i].name, m_listdata[i].dbname, m_listdata[i].score, m_listdata[i].mipid, m_listdata[i].swcid, m_listdata[i].dbid);
 		}
 	}
-
+/*
 	SetColumnWidth(1, wxLIST_AUTOSIZE);
 	int cw = GetColumnWidth(1);
 	if (cw < 100)
@@ -992,7 +995,7 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 	cw = GetColumnWidth(2);
 	if (cw < 100)
 		SetColumnWidth(2, 100);
-
+*/
 	SetEvtHandlerEnabled(true);
     Update();
 
@@ -1251,6 +1254,96 @@ void NBLASTListCtrl::OnLeftDClick(wxMouseEvent& event)
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+BEGIN_EVENT_TABLE( wxNBLASTSettingDialog, wxDialog )
+	EVT_BUTTON( wxID_OK, wxNBLASTSettingDialog::OnOk )
+END_EVENT_TABLE()
+
+wxNBLASTSettingDialog::wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+												const wxPoint &pos, const wxSize &size, long style)
+: wxDialog (parent, id, title, pos, size, style)
+{
+	SetEvtHandlerEnabled(false);
+	Freeze();
+
+	wxBoxSizer* itemBoxSizer = new wxBoxSizer(wxVERTICAL);
+
+	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
+	wxStaticText *st = new wxStaticText(this, 0, "Rscript:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	m_RPickCtrl = new wxFilePickerCtrl( this, ID_NBS_RPicker, "", _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
+	sizer1->Add(5, 10);
+	sizer1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+	sizer1->Add(5, 10);
+	sizer1->Add(m_RPickCtrl, 1, wxRIGHT|wxEXPAND);
+	sizer1->Add(10, 10);
+	itemBoxSizer->Add(5, 10);
+	itemBoxSizer->Add(sizer1, 0, wxEXPAND);
+		
+	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
+	st = new wxStaticText(this, 0, "Temporary directory:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	m_tmpdirPickCtrl = new wxDirPickerCtrl( this, ID_NBS_TempDirPicker, "", _("Choose a temp directory"), wxDefaultPosition, wxSize(400, -1));
+	sizer3->Add(5, 10);
+	sizer3->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+	sizer3->Add(5, 10);
+	sizer3->Add(m_tmpdirPickCtrl, 1, wxRIGHT|wxEXPAND);
+	sizer3->Add(10, 10);
+	itemBoxSizer->Add(5, 10);
+	itemBoxSizer->Add(sizer3, 0, wxEXPAND);
+
+	wxIntegerValidator<unsigned int> vald_int;
+	vald_int.SetMin(1);
+	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
+	st = new wxStaticText(this, 0, "Show Top", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	m_rnumTextCtrl = new wxTextCtrl( this, ID_NBS_ResultNumText, "100", wxDefaultPosition, wxSize(30, -1), wxTE_RIGHT, vald_int);
+	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+	sizer4->Add(5, 10);
+	sizer4->Add(m_rnumTextCtrl, 0, wxRIGHT);
+	sizer4->Add(5, 10);
+	st = new wxStaticText(this, 0, "Results", wxDefaultPosition, wxSize(70, -1), wxALIGN_LEFT);
+	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
+
+	itemBoxSizer->Add(5, 10);
+	itemBoxSizer->Add(sizer4, 0, wxALIGN_CENTER_HORIZONTAL);
+
+	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
+	wxButton *b = new wxButton(this, wxID_OK, _("OK"), wxDefaultPosition, wxDefaultSize);
+	wxButton *c = new wxButton(this, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxDefaultSize);
+	sizerb->Add(5,10);
+    sizerb->Add(b);
+    sizerb->Add(5,10);
+	sizerb->Add(c);
+	sizerb->Add(10,10);
+	itemBoxSizer->Add(10, 20);
+	itemBoxSizer->Add(sizerb, 0, wxALIGN_RIGHT);
+	itemBoxSizer->Add(10, 10);
+	
+	SetSizer(itemBoxSizer);
+
+	LoadSettings();
+	
+	Thaw();
+	SetEvtHandlerEnabled(true);
+}
+
+void wxNBLASTSettingDialog::LoadSettings()
+{
+
+}
+
+void wxNBLASTSettingDialog::SaveSettings()
+{
+
+}
+
+void wxNBLASTSettingDialog::OnOk( wxCommandEvent& event )
+{
+	SaveSettings();
+	event.Skip();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /*
  * NBLASTGuiPluginWindow type definition
  */
@@ -1266,9 +1359,10 @@ BEGIN_EVENT_TABLE( NBLASTGuiPluginWindow, wxGuiPluginWindowBase )
 
 ////@begin NBLASTGuiPluginWindow event table entries
     EVT_BUTTON( ID_SEND_EVENT_BUTTON, NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick )
-	EVT_BUTTON( ID_SKELETONIZE_BUTTON, NBLASTGuiPluginWindow::OnSkeletonizeButtonClick )
-	EVT_BUTTON( ID_EDIT_DB_BUTTON, NBLASTGuiPluginWindow::OnEditDBButtonClick )
-	EVT_BUTTON( ID_RELOAD_RESULTS_BUTTON, NBLASTGuiPluginWindow::OnReloadResultsButtonClick )
+	EVT_MENU( ID_SAVE_BUTTON, NBLASTGuiPluginWindow::OnSaveButtonClick )
+	EVT_MENU( ID_EDIT_DB_BUTTON, NBLASTGuiPluginWindow::OnEditDBButtonClick )
+	EVT_MENU( ID_IMPORT_RESULTS_BUTTON, NBLASTGuiPluginWindow::OnImportResultsButtonClick )
+	EVT_MENU( ID_SETTING, NBLASTGuiPluginWindow::OnSettingButtonClick )
 	EVT_CHECKBOX(ID_NB_OverlayCheckBox, NBLASTGuiPluginWindow::OnOverlayCheck)
 	EVT_CLOSE(NBLASTGuiPluginWindow::OnClose)
 ////@end NBLASTGuiPluginWindow event table entries
@@ -1418,6 +1512,19 @@ void NBLASTGuiPluginWindow::CreateControls()
         rpath = _("/Library/Frameworks/R.framework/Resources/bin/Rscript");
 #endif
 
+	wxBoxSizer *sizert = new wxBoxSizer(wxHORIZONTAL);
+	m_tb = new wxToolBar(nbpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTB_FLAT|wxTB_TOP|wxTB_NODIVIDER|wxTB_TEXT|wxTB_NOICONS|wxTB_HORZ_LAYOUT);
+	m_tb->AddTool(ID_SAVE_BUTTON, "Save", wxNullBitmap, "Save search results");
+	m_tb->AddTool(ID_IMPORT_RESULTS_BUTTON, "Import", wxNullBitmap, "Import search results");
+	m_tb->AddTool(ID_EDIT_DB_BUTTON, "Database", wxNullBitmap, "Edit NBLAST databases");
+	m_tb->AddTool(ID_SETTING, "Setting", wxNullBitmap, "Setting");
+	m_tb->SetToolSeparation(20);
+	m_tb->Realize();
+	sizert->Add(m_tb, 0, wxEXPAND);
+	itemBoxSizer2->Add(sizert, 0, wxEXPAND);
+	wxStaticLine *stl = new wxStaticLine(nbpanel);
+	itemBoxSizer2->Add(stl, 0, wxEXPAND);
+
 	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
 	st = new wxStaticText(nbpanel, 0, "Rscript:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_RPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_RPicker, rpath, _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
@@ -1428,18 +1535,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	sizer1->Add(10, 10);
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer1, 0, wxEXPAND);
-/*
-	wxBoxSizer *sizer2 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Target Neurons (.rds):", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_nlibPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_RPicker, nlibpath, _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxSize(400, -1));
-	sizer2->Add(5, 10);
-	sizer2->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	sizer2->Add(5, 10);
-	sizer2->Add(m_nlibPickCtrl, 1, wxRIGHT|wxEXPAND);
-	sizer2->Add(10, 10);
-	itemBoxSizer2->Add(5, 5);
-	itemBoxSizer2->Add(sizer2, 0, wxEXPAND);
-*/
+
 	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
 	st = new wxStaticText(nbpanel, 0, "Output Directory:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
 	m_outdirPickCtrl = new wxDirPickerCtrl( nbpanel, ID_NB_OutputPicker, outdir, _("Choose an output directory"), wxDefaultPosition, wxSize(400, -1));
@@ -1474,7 +1570,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
 	m_nlib_list = dbdlg.getList();
 	
-	int cols = 4;
+	int cols = 5;
 	int rows = 1;
 	if (m_nlib_list.size() > 0)
 		rows = (m_nlib_list.size() / cols) + 1;
@@ -1491,23 +1587,16 @@ void NBLASTGuiPluginWindow::CreateControls()
 	//itemBoxSizer2->Add(m_nlib_box, 0, wxALIGN_CENTER);
 	
 	wxBoxSizer *sizer2_2 = new wxBoxSizer(wxHORIZONTAL);
-	m_EditDBButton = new wxButton( nbpanel, ID_EDIT_DB_BUTTON, _("Edit Databases"), wxDefaultPosition, wxSize(-1, 40), 0 );
 	sizer2_2->Add(m_nlib_box, 0, wxALIGN_CENTER_VERTICAL);
-	sizer2_2->Add(10, 10);
-	sizer2_2->Add(m_EditDBButton, 0, wxALIGN_CENTER_VERTICAL);
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer2_2, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
     
 	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
-	m_SkeletonizeButton = new wxButton( nbpanel, ID_SKELETONIZE_BUTTON, _("Save Results"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_CommandButton = new wxButton( nbpanel, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerb->Add(m_CommandButton);
-	sizerb->Add(75, 10);
-	sizerb->Add(m_SkeletonizeButton);
 	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
-	//m_SkeletonizeButton->Hide();
-
+	
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
 	m_results = new NBLASTListCtrl(nbpanel, wxID_ANY, wxDefaultPosition, wxSize(590, 500));
 	m_results->addObserver(this);
@@ -1516,21 +1605,6 @@ void NBLASTGuiPluginWindow::CreateControls()
     sizerl->Add(5,10);
 	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizerl, 1, wxEXPAND);
-
-	wxBoxSizer *sizer5 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Result File:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_resultPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_ResultPicker, "", _("Choose a search result file"), "*.txt", wxDefaultPosition, wxSize(400, -1));
-	sizer5->Add(5, 10);
-	sizer5->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	sizer5->Add(5, 10);
-	sizer5->Add(m_resultPickCtrl, 1, wxRIGHT|wxEXPAND);
-	sizer5->Add(10, 10);
-	itemBoxSizer2->Add(5, 5);
-	itemBoxSizer2->Add(sizer5, 0, wxEXPAND);
-
-	m_ReloadResultButton = new wxButton( nbpanel, ID_RELOAD_RESULTS_BUTTON, _("Reload Results"), wxDefaultPosition, wxDefaultSize, 0 );
-	itemBoxSizer2->Add(10, 5);
-	itemBoxSizer2->Add(m_ReloadResultButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 
 	wxBoxSizer *sizerchk = new wxBoxSizer(wxHORIZONTAL);
 	m_overlayChk = new wxCheckBox(imgpanel, ID_NB_OverlayCheckBox, "Overlay search query");
@@ -1549,7 +1623,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	nbpanel->SetSizer(itemBoxSizer2);
 	imgpanel->SetSizer(itemBoxSizer2_1);
 
-	nbpanel->SetMinSize(wxSize(710,750));
+	nbpanel->SetMinSize(wxSize(640,750));
 	imgpanel->SetMinSize(wxSize(510,750));
 	
 	m_splitterWindow->SplitVertically(nbpanel, imgpanel);
@@ -1633,16 +1707,16 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 	switch (evid)
 	{
 	case NB_OPEN_FILE:
-		if (plugin && m_resultPickCtrl)
+		if (plugin)
 		{
 			wxString str = wxString((char *)info->data);
 			plugin->LoadFiles(str);
 		}
 		break;
 	case NB_SET_IMAGE:
-		if (plugin && m_resultPickCtrl && m_swcImagePanel && m_mipImagePanel)
+		if (plugin && m_results && m_swcImagePanel && m_mipImagePanel)
 		{
-			wxString prjimg = m_resultPickCtrl->GetPath().BeforeLast(L'.', NULL) + _(".png");
+			wxString prjimg = m_results->GetListFilePath().BeforeLast(L'.', NULL) + _(".png");
 
 			wxString str = wxString((char *)info->data);
 			wxStringTokenizer tkz(str, wxT(","));
@@ -1751,12 +1825,8 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 					plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum, nlibname);
 
 					wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
-					if (wxFileExists(respath))
-					{
-						m_resultPickCtrl->SetPath(respath);
-						wxCommandEvent e;
-						OnReloadResultsButtonClick(e);
-					}
+					if (wxFileExists(respath) && m_results)
+						m_results->LoadResults(respath);
 				}
 			}
 		}
@@ -1886,7 +1956,7 @@ void NBLASTGuiPluginWindow::OnDatabasePrefixCheck(wxCommandEvent& event)
 		plugin->SetPrefixDatabase(ch5->GetValue());
 }
 
-void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
+void NBLASTGuiPluginWindow::OnSaveButtonClick( wxCommandEvent& event )
 {
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 //	if (plugin) plugin->skeletonizeMask();
@@ -1894,7 +1964,7 @@ void NBLASTGuiPluginWindow::OnSkeletonizeButtonClick( wxCommandEvent& event )
 	if (!m_results || !plugin)
 		return;
 
-	wxFileDialog file_dlg(this, "Save Results", "", "", "*.txt", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
+	wxFileDialog file_dlg(this, "Save Search Results", "", "", "*.txt", wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
 	file_dlg.SetExtraControlCreator(CreateExtraNBLASTControl);
 	int rval = file_dlg.ShowModal();
 	if (rval == wxID_OK)
@@ -1917,7 +1987,7 @@ void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )
 		m_nlib_chks.clear();
 		m_nlib_box->Clear(true);
 		
-		int cols = 4;
+		int cols = 5;
 		int rows = 1;
 		if (m_nlib_list.size() > 0)
 			rows = (m_nlib_list.size() / cols) + 1;
@@ -1936,13 +2006,28 @@ void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )
 	}
 }
 
-void NBLASTGuiPluginWindow::OnReloadResultsButtonClick( wxCommandEvent& event )
+void NBLASTGuiPluginWindow::OnImportResultsButtonClick( wxCommandEvent& event )
 {
-	wxString respath = m_resultPickCtrl->GetPath();
-	
-	if (m_results) m_results->LoadResults(respath);
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+//	if (plugin) plugin->skeletonizeMask();
 
-    event.Skip();
+	if (!m_results || !plugin)
+		return;
+
+	wxFileDialog file_dlg(this, "Import Search Results", "", "", "*.txt", wxFD_OPEN);
+	int rval = file_dlg.ShowModal();
+	if (rval == wxID_OK)
+		m_results->LoadResults(file_dlg.GetPath());
+}
+
+void NBLASTGuiPluginWindow::OnSettingButtonClick( wxCommandEvent& event )
+{
+	wxNBLASTSettingDialog sdlg(this, wxID_ANY, "NBLAST Settings", wxDefaultPosition, wxSize(450, 200));
+	
+	if (sdlg.ShowModal() == wxID_OK)
+	{
+
+	}
 }
 
 void NBLASTGuiPluginWindow::OnOverlayCheck( wxCommandEvent& event )
@@ -1981,12 +2066,8 @@ void NBLASTGuiPluginWindow::OnInteropMessageReceived(wxCommandEvent & event)
 			plugin->runNBLAST();
 
 			wxString respath = plugin->GetOutDir() + wxFILE_SEP_PATH + plugin->GetFileName() + _(".txt");
-			if (wxFileExists(respath))
-			{
-				m_resultPickCtrl->SetPath(respath);
-				wxCommandEvent e;
-				OnReloadResultsButtonClick(e);
-			}
+			if (wxFileExists(respath) && m_results)
+				m_results->LoadResults(respath);
 		}
 	}
 }
