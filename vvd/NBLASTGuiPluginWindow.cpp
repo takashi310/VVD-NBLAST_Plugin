@@ -1260,18 +1260,28 @@ BEGIN_EVENT_TABLE( wxNBLASTSettingDialog, wxDialog )
 	EVT_BUTTON( wxID_OK, wxNBLASTSettingDialog::OnOk )
 END_EVENT_TABLE()
 
-wxNBLASTSettingDialog::wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+wxNBLASTSettingDialog::wxNBLASTSettingDialog(NBLASTGuiPlugin *plugin, wxWindow* parent, wxWindowID id, const wxString &title,
 												const wxPoint &pos, const wxSize &size, long style)
 : wxDialog (parent, id, title, pos, size, style)
 {
 	SetEvtHandlerEnabled(false);
 	Freeze();
 
+	wxString rpath, tmpdir, rnum;
+	m_plugin = NULL;
+	if (plugin)
+	{
+		rpath = plugin->GetRPath();
+		tmpdir = plugin->GetOutDir();
+		rnum = plugin->GetResultNum();
+		m_plugin = plugin;
+	}
+
 	wxBoxSizer* itemBoxSizer = new wxBoxSizer(wxVERTICAL);
 
 	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
 	wxStaticText *st = new wxStaticText(this, 0, "Rscript:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
-	m_RPickCtrl = new wxFilePickerCtrl( this, ID_NBS_RPicker, "", _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
+	m_RPickCtrl = new wxFilePickerCtrl( this, ID_NBS_RPicker, rpath, _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
 	sizer1->Add(5, 10);
 	sizer1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer1->Add(5, 10);
@@ -1282,7 +1292,7 @@ wxNBLASTSettingDialog::wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, co
 		
 	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
 	st = new wxStaticText(this, 0, "Temporary directory:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
-	m_tmpdirPickCtrl = new wxDirPickerCtrl( this, ID_NBS_TempDirPicker, "", _("Choose a temp directory"), wxDefaultPosition, wxSize(400, -1));
+	m_tmpdirPickCtrl = new wxDirPickerCtrl( this, ID_NBS_TempDirPicker, tmpdir, _("Choose a temp directory"), wxDefaultPosition, wxSize(400, -1));
 	sizer3->Add(5, 10);
 	sizer3->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer3->Add(5, 10);
@@ -1295,7 +1305,7 @@ wxNBLASTSettingDialog::wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, co
 	vald_int.SetMin(1);
 	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
 	st = new wxStaticText(this, 0, "Show Top", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
-	m_rnumTextCtrl = new wxTextCtrl( this, ID_NBS_ResultNumText, "100", wxDefaultPosition, wxSize(30, -1), wxTE_RIGHT, vald_int);
+	m_rnumTextCtrl = new wxTextCtrl( this, ID_NBS_ResultNumText, rnum, wxDefaultPosition, wxSize(30, -1), wxTE_RIGHT, vald_int);
 	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
 	sizer4->Add(5, 10);
 	sizer4->Add(m_rnumTextCtrl, 0, wxRIGHT);
@@ -1319,8 +1329,6 @@ wxNBLASTSettingDialog::wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, co
 	itemBoxSizer->Add(10, 10);
 	
 	SetSizer(itemBoxSizer);
-
-	LoadSettings();
 	
 	Thaw();
 	SetEvtHandlerEnabled(true);
@@ -1333,7 +1341,12 @@ void wxNBLASTSettingDialog::LoadSettings()
 
 void wxNBLASTSettingDialog::SaveSettings()
 {
-
+	if (m_plugin)
+	{
+		m_plugin->SetRPath(m_RPickCtrl->GetPath());
+		m_plugin->SetOutDir(m_tmpdirPickCtrl->GetPath());
+		m_plugin->SetResultNum(m_rnumTextCtrl->GetValue());
+	}
 }
 
 void wxNBLASTSettingDialog::OnOk( wxCommandEvent& event )
@@ -1421,26 +1434,8 @@ NBLASTGuiPluginWindow::~NBLASTGuiPluginWindow()
 {
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 	if (plugin)
-	{
-		wxString path;
-		if (m_RPickCtrl)
-		{
-			path = m_RPickCtrl->GetPath();
-			plugin->SetRPath(path);
-		}
-		if (m_nlibPickCtrl)
-		{
-			path = m_nlibPickCtrl->GetPath();
-			plugin->SetNlibPath(path);
-		}
-		if (m_outdirPickCtrl)
-		{
-			path = m_outdirPickCtrl->GetPath();
-			plugin->SetOutDir(path);
-		}
-
 		plugin->SaveConfigFile();
-	}
+
 	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
 	for (int i = 0; i < m_nlib_chks.size(); i++)
 		dbdlg.setState(i, m_nlib_chks[i]->GetValue());
@@ -1455,10 +1450,7 @@ NBLASTGuiPluginWindow::~NBLASTGuiPluginWindow()
 void NBLASTGuiPluginWindow::Init()
 {
 	m_splitterWindow = NULL;
-	m_RPickCtrl = NULL;
-	m_nlibPickCtrl = NULL;
-	m_outdirPickCtrl = NULL;
-	m_ofnameTextCtrl = NULL;
+	m_tb = NULL;
 	m_CommandButton = NULL;
 	m_swcImagePanel = NULL;
 	m_mipImagePanel = NULL;
@@ -1503,13 +1495,10 @@ void NBLASTGuiPluginWindow::CreateControls()
 	wxIntegerValidator<unsigned int> vald_int;
 	vald_int.SetMin(1);
 
-	wxStaticText *st;
 #ifdef _WIN32
     int stsize = 120;
 #else
     int stsize = 130;
-    if (rpath.IsEmpty() && wxFileExists("/Library/Frameworks/R.framework/Resources/bin/Rscript"))
-        rpath = _("/Library/Frameworks/R.framework/Resources/bin/Rscript");
 #endif
 
 	wxBoxSizer *sizert = new wxBoxSizer(wxHORIZONTAL);
@@ -1524,48 +1513,6 @@ void NBLASTGuiPluginWindow::CreateControls()
 	itemBoxSizer2->Add(sizert, 0, wxEXPAND);
 	wxStaticLine *stl = new wxStaticLine(nbpanel);
 	itemBoxSizer2->Add(stl, 0, wxEXPAND);
-
-	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Rscript:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_RPickCtrl = new wxFilePickerCtrl( nbpanel, ID_NB_RPicker, rpath, _("Set a path to Rscript"), wxFileSelectorDefaultWildcardStr, wxDefaultPosition, wxSize(400, -1));
-	sizer1->Add(5, 10);
-	sizer1->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	sizer1->Add(5, 10);
-	sizer1->Add(m_RPickCtrl, 1, wxRIGHT|wxEXPAND);
-	sizer1->Add(10, 10);
-	itemBoxSizer2->Add(5, 5);
-	itemBoxSizer2->Add(sizer1, 0, wxEXPAND);
-
-	wxBoxSizer *sizer3 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Output Directory:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_outdirPickCtrl = new wxDirPickerCtrl( nbpanel, ID_NB_OutputPicker, outdir, _("Choose an output directory"), wxDefaultPosition, wxSize(400, -1));
-	sizer3->Add(5, 10);
-	sizer3->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	sizer3->Add(5, 10);
-	sizer3->Add(m_outdirPickCtrl, 1, wxRIGHT|wxEXPAND);
-	sizer3->Add(10, 10);
-	itemBoxSizer2->Add(5, 10);
-	itemBoxSizer2->Add(sizer3, 0, wxEXPAND);
-
-	wxBoxSizer *sizer4 = new wxBoxSizer(wxHORIZONTAL);
-	st = new wxStaticText(nbpanel, 0, "Project Name:", wxDefaultPosition, wxSize(stsize, -1), wxALIGN_RIGHT);
-	m_ofnameTextCtrl = new wxTextCtrl( nbpanel, ID_NB_OutFileText, "", wxDefaultPosition, wxSize(200, -1));
-	sizer4->Add(5, 10);
-	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	sizer4->Add(5, 10);
-	sizer4->Add(m_ofnameTextCtrl, 1, wxRIGHT);
-	sizer4->Add(20, 10);
-	st = new wxStaticText(nbpanel, 0, "Save Top", wxDefaultPosition, wxSize(100, -1), wxALIGN_RIGHT);
-	m_rnumTextCtrl = new wxTextCtrl( nbpanel, ID_NB_ResultNumText, rnum, wxDefaultPosition, wxSize(30, -1), wxTE_RIGHT, vald_int);
-	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-	sizer4->Add(5, 10);
-	sizer4->Add(m_rnumTextCtrl, 0, wxRIGHT);
-	sizer4->Add(5, 10);
-	st = new wxStaticText(nbpanel, 0, "Neurons", wxDefaultPosition, wxSize(70, -1), wxALIGN_LEFT);
-	sizer4->Add(st, 0, wxALIGN_CENTER_VERTICAL);
-
-	itemBoxSizer2->Add(5, 5);
-	itemBoxSizer2->Add(sizer4, 0, wxALIGN_LEFT);
 
 	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
 	m_nlib_list = dbdlg.getList();
@@ -1583,18 +1530,16 @@ void NBLASTGuiPluginWindow::CreateControls()
 		gs->Add(m_nlib_chks[i], 0, wxALIGN_CENTER);
 		m_nlib_chks[i]->SetValue(m_nlib_list[i].state);
 	}
-	m_nlib_box->Add(gs, 0, wxALIGN_CENTER|wxALL, 10);
+	m_nlib_box->Add(gs, 0, wxALIGN_CENTER|wxALL, 5);
 	//itemBoxSizer2->Add(m_nlib_box, 0, wxALIGN_CENTER);
 	
 	wxBoxSizer *sizer2_2 = new wxBoxSizer(wxHORIZONTAL);
 	sizer2_2->Add(m_nlib_box, 0, wxALIGN_CENTER_VERTICAL);
-	itemBoxSizer2->Add(5, 5);
 	itemBoxSizer2->Add(sizer2_2, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
     
 	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
 	m_CommandButton = new wxButton( nbpanel, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerb->Add(m_CommandButton);
-	itemBoxSizer2->Add(10, 5);
 	itemBoxSizer2->Add(sizerb, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
 	
     wxBoxSizer *sizerl = new wxBoxSizer(wxHORIZONTAL);
@@ -1649,17 +1594,11 @@ void NBLASTGuiPluginWindow::EnableControls(bool enable)
 {
 	if (enable)
 	{
-		if (m_RPickCtrl) m_RPickCtrl->Enable();
-		if (m_nlibPickCtrl) m_nlibPickCtrl->Enable();
-		if (m_outdirPickCtrl) m_outdirPickCtrl->Enable();
 		if (m_results) m_results->Enable();
 		if (m_CommandButton) m_CommandButton->Enable();
 	}
 	else 
 	{
-		if (m_RPickCtrl) m_RPickCtrl->Disable();
-		if (m_nlibPickCtrl) m_nlibPickCtrl->Disable();
-		if (m_outdirPickCtrl) m_outdirPickCtrl->Disable();
 		if (m_results) m_results->Disable();
 		if (m_CommandButton) m_CommandButton->Disable();
 	}
@@ -1749,8 +1688,6 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 
 void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 {
-	wxString rpath = m_RPickCtrl->GetPath();
-	
 	wxArrayString nlibs;
 	wxArrayString nlibnames;
 	for (int i=0; i < m_nlib_list.size(); i++)
@@ -1773,14 +1710,15 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 		nlibpath += nlibs[nlibs.Count()-1];
 		nlibname += nlibnames[nlibs.Count()-1];
 	}
-
-	wxString outdir = m_outdirPickCtrl->GetPath();
-	wxString ofname = m_ofnameTextCtrl->GetValue();
-	wxString rnum = m_rnumTextCtrl->GetValue();
-	long lval = -1;
+	
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	long lval = -1;
 	if (plugin)
 	{
+		wxString rpath = plugin->GetRPath();
+		wxString outdir = plugin->GetOutDir();;
+		wxString ofname = "vvd_nblast_tmp_result";
+		wxString rnum = plugin->GetResultNum();
 		if (!wxFileExists(rpath))
 			{wxMessageBox("Could not find Rscript binary", "NBLAST Plugin"); event.Skip(); return;}
 		if (nlibs.IsEmpty())
@@ -1789,13 +1727,13 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 		{
 			if (!wxFileExists(nlibs[i]))
 			{
-				wxMessageBox(wxT("Could not find a target neuron file (")+nlibs[i]+wxT(")"), wxT("NBLAST Plugin"));
+				wxMessageBox(wxT("Could not find a NBLAST database (")+nlibs[i]+wxT(")"), wxT("NBLAST Plugin"));
 				event.Skip();
 				return;
 			}
 		}
 		if (outdir.IsEmpty())
-			{wxMessageBox("Set an output directory", "NBLAST Plugin"); event.Skip(); return;}
+			{wxMessageBox("Set a temp directory", "NBLAST Plugin"); event.Skip(); return;}
 		if (ofname.IsEmpty())
 			{wxMessageBox("Set a project name", "NBLAST Plugin"); event.Skip(); return;}
 		if (!rnum.ToLong(&lval))
@@ -2022,7 +1960,7 @@ void NBLASTGuiPluginWindow::OnImportResultsButtonClick( wxCommandEvent& event )
 
 void NBLASTGuiPluginWindow::OnSettingButtonClick( wxCommandEvent& event )
 {
-	wxNBLASTSettingDialog sdlg(this, wxID_ANY, "NBLAST Settings", wxDefaultPosition, wxSize(450, 200));
+	wxNBLASTSettingDialog sdlg((NBLASTGuiPlugin *)GetPlugin() ,this, wxID_ANY, "NBLAST Settings", wxDefaultPosition, wxSize(450, 200));
 	
 	if (sdlg.ShowModal() == wxID_OK)
 	{

@@ -212,6 +212,72 @@ wxWindow * NBLASTGuiPlugin::CreatePanel(wxWindow * parent)
 void NBLASTGuiPlugin::OnInit()
 {
 	LoadConfigFile();
+
+#ifdef _WIN32
+	if (m_R_path.IsEmpty())
+	{
+		WCHAR szp64[MAX_PATH], szp[MAX_PATH];
+		ExpandEnvironmentStrings(L"%ProgramW6432%", szp64, ARRAYSIZE(szp64));
+		ExpandEnvironmentStrings(L"%programfiles(x86)%", szp, ARRAYSIZE(szp));
+		
+		wxString r64dir = wxString(szp64) + wxFILE_SEP_PATH + "R";
+		wxString rdir = wxString(szp) + wxFILE_SEP_PATH + "R";
+		wxString rpath;
+		
+		if (wxDirExists(r64dir))
+		{
+			wxDir dir(r64dir);
+			wxString subdir;
+			wxArrayString list;
+			for ( bool cont = dir.GetFirst(&subdir, wxString("R-*"), wxDIR_DIRS); cont; cont = dir.GetNext(&subdir) )
+				list.Add(subdir);
+			list.Sort(true);
+
+			for (int i = 0 ; i < list.GetCount(); i++)
+			{
+				wxArrayString result;
+				wxString bindir = r64dir + wxFILE_SEP_PATH + list[i] + wxFILE_SEP_PATH + "bin";
+				wxDir::GetAllFiles(bindir, &result, wxT("*Rscript*"));
+				if (result.GetCount() > 0)
+				{
+					rpath = result[0];
+					break;
+				}
+			}
+		}
+		else if (rpath.IsEmpty() && wxDirExists(rdir))
+		{
+			wxDir dir(rdir);
+			wxString subdir;
+			wxArrayString list;
+			for ( bool cont = dir.GetFirst(&subdir, wxString("R-*"), wxDIR_DIRS); cont; cont = dir.GetNext(&subdir) )
+				list.Add(subdir);
+			list.Sort(true);
+
+			for (int i = 0 ; i < list.GetCount(); i++)
+			{
+				wxArrayString result;
+				wxString bindir = rdir + wxFILE_SEP_PATH + list[i] + wxFILE_SEP_PATH + "bin";
+				wxDir::GetAllFiles(bindir, &result, wxT("*Rscript*"));
+				if (result.GetCount() > 0)
+				{
+					rpath = result[0];
+					break;
+				}
+			}
+		}
+
+        m_R_path = rpath;
+	}
+#else
+	if (m_R_path.IsEmpty() && wxFileExists("/Library/Frameworks/R.framework/Resources/bin/Rscript"))
+        m_R_path = _("/Library/Frameworks/R.framework/Resources/bin/Rscript");
+#endif
+
+	if (m_out_dir.IsEmpty())
+		m_out_dir = wxStandardPaths::Get().GetTempDir();
+	if (m_rnum.IsEmpty())
+		m_rnum = wxT("100");
 }
 
 void NBLASTGuiPlugin::OnDestroy()

@@ -245,7 +245,7 @@ class wxNBLASTSettingDialog : public wxDialog
 	};
 
 public:
-	wxNBLASTSettingDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+	wxNBLASTSettingDialog(NBLASTGuiPlugin *plugin, wxWindow* parent, wxWindowID id, const wxString &title,
 					const wxPoint &pos = wxDefaultPosition,
 					const wxSize &size = wxDefaultSize,
 					long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
@@ -257,6 +257,7 @@ private:
 	wxFilePickerCtrl* m_RPickCtrl;
 	wxDirPickerCtrl* m_tmpdirPickCtrl;
 	wxTextCtrl* m_rnumTextCtrl;
+	NBLASTGuiPlugin* m_plugin;
 public:
 	void OnOk( wxCommandEvent& event );
 
@@ -342,12 +343,7 @@ public:
 private:
 
 	wxSplitterWindow* m_splitterWindow;
-    wxFilePickerCtrl* m_RPickCtrl;
-	wxFilePickerCtrl* m_nlibPickCtrl;
-	wxDirPickerCtrl* m_outdirPickCtrl;
-	wxTextCtrl* m_ofnameTextCtrl;
-	wxTextCtrl* m_rnumTextCtrl;
-	NBLASTListCtrl* m_results;
+    NBLASTListCtrl* m_results;
 	wxImagePanel* m_swcImagePanel;
 	wxImagePanel* m_mipImagePanel;
 	wxButton* m_CommandButton;
