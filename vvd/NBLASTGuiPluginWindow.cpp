@@ -763,28 +763,32 @@ NBLASTListCtrl::NBLASTListCtrl(
 	itemCol.SetText("");
 	this->InsertColumn(0, itemCol);
 
-	itemCol.SetText("Name");
+	itemCol.SetText("");
 	this->InsertColumn(1, itemCol);
 
-	itemCol.SetText("Database");
+	itemCol.SetText("Name");
 	this->InsertColumn(2, itemCol);
 
-	itemCol.SetText("Skeleton");
+	itemCol.SetText("Database");
 	this->InsertColumn(3, itemCol);
 
-	itemCol.SetText("Volume Data");
+	itemCol.SetText("Skeleton");
 	this->InsertColumn(4, itemCol);
+
+	itemCol.SetText("Volume Data");
+	this->InsertColumn(5, itemCol);
 	
 	itemCol.SetText("Score");
 	itemCol.SetAlign(wxLIST_FORMAT_RIGHT);
-	this->InsertColumn(5, itemCol);
+	this->InsertColumn(6, itemCol);
 
 	SetColumnWidth(0, 0);
-	SetColumnWidth(1, 110);
-	SetColumnWidth(2, 100);
-	SetColumnWidth(3, 150);
+	SetColumnWidth(1, 0);
+	SetColumnWidth(2, 110);
+	SetColumnWidth(3, 100);
 	SetColumnWidth(4, 150);
-	SetColumnWidth(5, 90);
+	SetColumnWidth(5, 150);
+	SetColumnWidth(6, 90);
 }
 
 NBLASTListCtrl::~NBLASTListCtrl()
@@ -873,11 +877,11 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 					w = img.GetWidth();
 					h = img.GetHeight();
 #ifdef _DARWIN
-					SetColumnWidth(3, w+8);
 					SetColumnWidth(4, w+8);
+					SetColumnWidth(5, w+8);
 #else
-					SetColumnWidth(3, w+2);
 					SetColumnWidth(4, w+2);
+					SetColumnWidth(5, w+2);
 #endif
 					show_image = true;
 				}
@@ -898,11 +902,11 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 						w = img.GetWidth();
 						h = img.GetHeight();
 #ifdef _DARWIN
-						SetColumnWidth(3, w+8);
 						SetColumnWidth(4, w+8);
+						SetColumnWidth(5, w+8);
 #else
-						SetColumnWidth(3, w+2);
 						SetColumnWidth(4, w+2);
+						SetColumnWidth(5, w+2);
 #endif
 						show_image = true;
 					}
@@ -1026,7 +1030,7 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 	if (item != -1)
 	{
 		do{
-			tos << GetText(item, 1) << "," << GetText(item, 0) << "," << GetText(item, 5) << endl;
+			tos << GetText(item, 2) << "," << GetText(item, 1) << "," << GetText(item, 6) << endl;
 		} while ((item = GetNextItem(item, wxLIST_NEXT_BELOW)) != -1);
 	}
 
@@ -1045,15 +1049,15 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 		{
 			do
 			{
-				wxString dbidstr = GetText(item, 0);
+				wxString dbidstr = GetText(item, 1);
 				int dbid = wxAtoi(dbidstr);
 				if (dbid >= 0 && dbid < m_dbdirs.GetCount())
 				{
-					wxString name = GetText(item, 1);
+					wxString name = GetText(item, 2);
 					wxString prefix;
 					if (pfx_score)
 					{
-						wxString scstr = GetText(item, 5);
+						wxString scstr = GetText(item, 6);
 						double sc = 1.0;
 						if(scstr.ToDouble(&sc))
 						{
@@ -1115,7 +1119,7 @@ void NBLASTListCtrl::DeleteAll()
 
 void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
 {
-	if ( event.GetColumn() == 0 )
+	if ( event.GetColumn() == 0 || event.GetColumn() == 1 )
     {
         event.Veto();
     }
@@ -1124,12 +1128,13 @@ void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
 void NBLASTListCtrl::Append(wxString name, wxString dbname, wxString score, int mipid, int swcid, int dbid)
 {
 	wxString dbidstr = wxString::Format(wxT("%i"), dbid);
-	long tmp = InsertItem(GetItemCount(), dbidstr);
-	SetItem(tmp, 1, name);
-	SetItem(tmp, 2, dbname);
-	SetItem(tmp, 3, _(""), swcid);
-	SetItem(tmp, 4, _(""), mipid);
-	SetItem(tmp, 5, score);
+	long tmp = InsertItem(GetItemCount(), name);
+	SetItem(tmp, 1, dbidstr);
+	SetItem(tmp, 2, name);
+	SetItem(tmp, 3, dbname);
+	SetItem(tmp, 4, _(""), swcid);
+	SetItem(tmp, 5, _(""), mipid);
+	SetItem(tmp, 6, score);
 }
 
 wxString NBLASTListCtrl::GetText(long item, int col)
@@ -1160,11 +1165,11 @@ void NBLASTListCtrl::OnSelect(wxListEvent &event)
 
 	if (item != -1)
 	{
-		wxString dbidstr = GetText(item, 0);
+		wxString dbidstr = GetText(item, 1);
 		int dbid = wxAtoi(dbidstr);
 		if (dbid >= 0 && dbid < m_dbdirs.GetCount())
 		{
-			wxString name = GetText(item, 1);
+			wxString name = GetText(item, 2);
 			wxString imgpath1 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc_prev") + wxFILE_SEP_PATH + name + _(".png");
 			wxString imgpath2 = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("MIP") + wxFILE_SEP_PATH + name + _(".png");
 			wxString imgpaths = imgpath1 + _(",") + imgpath2;
@@ -1181,11 +1186,11 @@ void NBLASTListCtrl::OnAct(wxListEvent &event)
 		wxLIST_STATE_SELECTED);
 	if (item != -1)
 	{
-		wxString dbidstr = GetText(item, 0);
+		wxString dbidstr = GetText(item, 1);
 		int dbid = wxAtoi(dbidstr);
 		if (dbid >= 0 && dbid < m_dbdirs.GetCount())
 		{
-			wxString name = GetText(item, 1);
+			wxString name = GetText(item, 2);
 			wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
 			notifyAll(NB_OPEN_FILE, swcpath.ToStdString().c_str(), swcpath.ToStdString().length()+1);
 		}
@@ -1229,23 +1234,23 @@ void NBLASTListCtrl::OnLeftDClick(wxMouseEvent& event)
 	{
 		wxPoint pos = event.GetPosition();
 		wxRect rect_swc, rect_vol;
-		GetSubItemRect(item, 3, rect_swc);
-		GetSubItemRect(item, 4, rect_vol);
+		GetSubItemRect(item, 4, rect_swc);
+		GetSubItemRect(item, 5, rect_vol);
 
-		wxString dbidstr = GetText(item, 0);
+		wxString dbidstr = GetText(item, 1);
 		int dbid = wxAtoi(dbidstr);
 		if (dbid >= 0 && dbid < m_dbdirs.GetCount())
 		{
 			if (rect_swc.Contains(pos))
 			{
-				wxString name = GetText(item, 1);
+				wxString name = GetText(item, 2);
 				wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("swc") + wxFILE_SEP_PATH + name + _(".swc");
 				if (wxFileExists(swcpath))
 					notifyAll(NB_OPEN_FILE, swcpath.ToStdString().c_str(), swcpath.ToStdString().length()+1);
 			}
 			else if (rect_vol.Contains(pos))
 			{
-				wxString name = GetText(item, 1);
+				wxString name = GetText(item, 2);
 				wxString volpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("volume") + wxFILE_SEP_PATH + name + _(".nrrd");
 				if (wxFileExists(volpath))
 					notifyAll(NB_OPEN_FILE, volpath.ToStdString().c_str(), volpath.ToStdString().length()+1);
@@ -1535,7 +1540,8 @@ void NBLASTGuiPluginWindow::CreateControls()
 	
 	wxBoxSizer *sizer2_2 = new wxBoxSizer(wxHORIZONTAL);
 	sizer2_2->Add(m_nlib_box, 0, wxALIGN_CENTER_VERTICAL);
-	itemBoxSizer2->Add(sizer2_2, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5);
+	itemBoxSizer2->Add(5, 3);
+	itemBoxSizer2->Add(sizer2_2, 0, wxALIGN_CENTER_HORIZONTAL|wxALL);
     
 	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
 	m_CommandButton = new wxButton( nbpanel, ID_SEND_EVENT_BUTTON, _("Run NBLAST"), wxDefaultPosition, wxDefaultSize, 0 );
@@ -1548,7 +1554,7 @@ void NBLASTGuiPluginWindow::CreateControls()
     sizerl->Add(5,10);
     sizerl->Add(m_results, 1, wxEXPAND);
     sizerl->Add(5,10);
-	itemBoxSizer2->Add(5, 5);
+	itemBoxSizer2->Add(5, 3);
 	itemBoxSizer2->Add(sizerl, 1, wxEXPAND);
 
 	wxBoxSizer *sizerchk = new wxBoxSizer(wxHORIZONTAL);
