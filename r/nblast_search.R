@@ -39,7 +39,7 @@ if (length(args) >= 6) {
 cat("Loading NAT...")
 
 if (!require("nat",character.only = TRUE)) {
-  if (!requireNamespace("devtools")) install.packages("devtools")
+  if (!requireNamespace("devtools")) install.packages("devtools", repos="http://cran.rstudio.com/")
   devtools::install_github("jefferis/nat")
 }
 if (!require("nat.nblast",character.only = TRUE)) {
@@ -74,7 +74,7 @@ for (i in 1:length(nlibs)) {
   dp = read.neuronlistfh(nlibs[i], localdir=dirname(nlibs[i]))
 
   #scores = nblast(dotprops(img), dp, normalised=T, UseAlpha=T, .parallel=T, .progress='text')
-  scores = nblast(dotprops(img), dp, normalised=T, UseAlpha=T, .progress='text')
+  scores = nblast(dotprops(img), dp, normalised=T, UseAlpha=F, .progress='text')
   scores = sort(scores, dec=T)
   
   #scores = nblast(dotprops(img), dp, normalised=F, version=1, sd=3, .progress='text')
