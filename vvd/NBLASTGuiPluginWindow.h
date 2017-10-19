@@ -178,6 +178,7 @@ struct NBLASTListItemData
 	int swcid;
 	int mipid;
 	wxString score;
+	int itemid;
 };
 
 class NBLASTListCtrl : public wxListCtrl, public Notifier
@@ -196,7 +197,7 @@ public:
 		long style=wxLC_REPORT|wxLC_SINGLE_SEL);
 	~NBLASTListCtrl();
 
-	void Append(wxString name, wxString dbname, wxString score, int mipid=-1, int swcid=-1, int dbid=-1);
+	void Append(wxString name, wxString dbname, wxString score, int mipid=-1, int swcid=-1, int dbid=-1, int index=-1);
 	wxString GetText(long item, int col);
 	int GetImageId(long item, int col);
 	
@@ -206,6 +207,9 @@ public:
 
 	void DeleteSelection();
 	void DeleteAll();
+	void AddHistory(const NBLASTListItemData &data);
+	void Undo();
+	void Redo();
 
 private:
 	void OnSelect(wxListEvent &event);
@@ -231,6 +235,8 @@ private:
 	wxArrayString m_dbpaths;
 	wxArrayString m_dbnames;
 	std::vector<NBLASTListItemData> m_listdata;
+	std::vector<NBLASTListItemData> m_history;
+	int m_history_pos;
 	wxString m_rfpath;
 };
 
@@ -284,7 +290,8 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_SAVE_BUTTON,
 		ID_IMPORT_RESULTS_BUTTON,
 		ID_SETTING,
-		ID_WaitTimer
+		ID_WaitTimer,
+		ID_IdleTimer,
 	};
 
 public:
@@ -312,6 +319,7 @@ public:
 	void OnEditDBButtonClick( wxCommandEvent& event );
 	void OnSaveButtonClick( wxCommandEvent& event );
 	void OnClose(wxCloseEvent& event);
+	void OnShowHide(wxShowEvent& event);
 	void OnInteropMessageReceived(wxCommandEvent & event);
 	void OnOverlayCheck(wxCommandEvent& event);
 	void OnMIPImageExportCheck(wxCommandEvent& event);
@@ -319,6 +327,9 @@ public:
 	void OnSWCExportCheck(wxCommandEvent& event);
 	void OnScorePrefixCheck(wxCommandEvent& event);
 	void OnDatabasePrefixCheck(wxCommandEvent& event);
+	void OnKeyDown(wxKeyEvent& event);
+	void OnKeyUp(wxKeyEvent& event);
+	void OnIdle(wxTimerEvent& event);
 
 ////@end NBLASTGuiPluginWindow event handler declarations
 
@@ -357,6 +368,7 @@ private:
 	wxStaticBoxSizer *m_nlib_box;
 	wxPanel *m_nbpanel;
 	wxToolBar *m_tb;
+	wxTimer *m_idleTimer;
 };
 
 #endif

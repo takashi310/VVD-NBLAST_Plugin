@@ -758,6 +758,7 @@ NBLASTListCtrl::NBLASTListCtrl(
 	wxListCtrl(parent, id, pos, size, style)
 {
 	m_images = NULL;
+	m_history_pos = 0;
 
 	wxListItem itemCol;
 	itemCol.SetText("");
@@ -1105,7 +1106,20 @@ void NBLASTListCtrl::DeleteSelection()
 		long sel = item;
 		if (GetNextItem(item, wxLIST_NEXT_BELOW) == -1)
 			sel = GetNextItem(item, wxLIST_NEXT_ABOVE);
+		
+		NBLASTListItemData hdata;
+		wxString dbidstr = GetText(item, 1);
+		hdata.dbid = wxAtoi(dbidstr);
+		hdata.name = GetText(item, 2);
+		hdata.dbname = GetText(item, 3);
+		hdata.swcid = GetImageId(item, 4);
+		hdata.mipid = GetImageId(item, 5);
+		hdata.score = GetText(item, 6);
+		hdata.itemid = item;
+		AddHistory(hdata);
+
 		DeleteItem(item);
+
 		if (sel != -1)
 			SetItemState(sel, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
 	}
@@ -1114,8 +1128,75 @@ void NBLASTListCtrl::DeleteSelection()
 void NBLASTListCtrl::DeleteAll()
 {
 	DeleteAllItems();
+	if (!m_history.empty()) m_history.clear();
+	m_history_pos = 0;
 }
 
+void NBLASTListCtrl::AddHistory(const NBLASTListItemData &data)
+{
+	if (m_history_pos < m_history.size())
+	{
+		if (m_history_pos > 0)
+			m_history = vector<NBLASTListItemData>(m_history.begin(), m_history.begin()+m_history_pos);
+		else
+		{
+			if (!m_history.empty()) m_history.clear();
+			m_history_pos = 0;
+		}
+	}
+
+	if (m_history_pos >= 300)
+	{
+		m_history.erase(m_history.begin());
+		m_history.push_back(data);
+	}
+	else
+	{
+		m_history.push_back(data);
+		m_history_pos++;
+	}
+}
+
+void NBLASTListCtrl::Undo()
+{
+	if (m_history_pos <= 0)
+		return;
+
+	m_history_pos--;
+	NBLASTListItemData comdata = m_history[m_history_pos];
+
+	long item = GetNextItem(-1,
+		wxLIST_NEXT_ALL,
+		wxLIST_STATE_SELECTED);
+	long sel = -1;
+	if (item != -1)
+	{
+		if (item >= comdata.itemid)
+			sel = item + 1;
+	}
+
+	Append(comdata.name, comdata.dbname, comdata.score, comdata.mipid, comdata.swcid, comdata.dbid, comdata.itemid);
+}
+
+void NBLASTListCtrl::Redo()
+{
+	if (m_history_pos >= m_history.size())
+		return;
+	NBLASTListItemData comdata = m_history[m_history_pos];
+
+	long item = GetNextItem(-1,
+		wxLIST_NEXT_ALL,
+		wxLIST_STATE_SELECTED);
+	long sel = -1;
+	if (item != -1)
+	{
+		if (item >= comdata.itemid)
+			sel = item - 1;
+	}
+
+	DeleteItem(comdata.itemid);
+	m_history_pos++;
+}
 
 void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
 {
@@ -1125,10 +1206,11 @@ void NBLASTListCtrl::OnColBeginDrag(wxListEvent& event)
     }
 }
 
-void NBLASTListCtrl::Append(wxString name, wxString dbname, wxString score, int mipid, int swcid, int dbid)
+void NBLASTListCtrl::Append(wxString name, wxString dbname, wxString score, int mipid, int swcid, int dbid, int index)
 {
 	wxString dbidstr = wxString::Format(wxT("%i"), dbid);
-	long tmp = InsertItem(GetItemCount(), name);
+	int itemid = index >= 0 ? index : GetItemCount();
+	long tmp = InsertItem(itemid, name);
 	SetItem(tmp, 1, dbidstr);
 	SetItem(tmp, 2, name);
 	SetItem(tmp, 3, dbname);
@@ -1217,6 +1299,16 @@ void NBLASTListCtrl::OnKeyDown(wxKeyEvent& event)
 	if ( event.GetKeyCode() == WXK_DELETE ||
 		event.GetKeyCode() == WXK_BACK)
 		DeleteSelection();
+
+	if (event.GetKeyCode() == wxKeyCode('Z') && wxGetKeyState(WXK_CONTROL) && !wxGetKeyState(WXK_SHIFT) && !wxGetKeyState(WXK_ALT))
+		Undo();
+	
+	if (event.GetKeyCode() == wxKeyCode('Y') && wxGetKeyState(WXK_CONTROL) && !wxGetKeyState(WXK_SHIFT) && !wxGetKeyState(WXK_ALT))
+		Redo();
+
+	if (event.GetKeyCode() == wxKeyCode('Z') && wxGetKeyState(WXK_CONTROL) && wxGetKeyState(WXK_SHIFT) && !wxGetKeyState(WXK_ALT))
+		Redo();
+
 	event.Skip();
 }
 
@@ -1383,6 +1475,10 @@ BEGIN_EVENT_TABLE( NBLASTGuiPluginWindow, wxGuiPluginWindowBase )
 	EVT_MENU( ID_SETTING, NBLASTGuiPluginWindow::OnSettingButtonClick )
 	EVT_CHECKBOX(ID_NB_OverlayCheckBox, NBLASTGuiPluginWindow::OnOverlayCheck)
 	EVT_CLOSE(NBLASTGuiPluginWindow::OnClose)
+	EVT_KEY_DOWN(NBLASTGuiPluginWindow::OnKeyDown)
+	EVT_SHOW(NBLASTGuiPluginWindow::OnShowHide)
+	EVT_KEY_UP(NBLASTGuiPluginWindow::OnKeyUp)
+	EVT_TIMER(ID_IdleTimer ,NBLASTGuiPluginWindow::OnIdle)
 ////@end NBLASTGuiPluginWindow event table entries
 
 END_EVENT_TABLE()
@@ -1464,6 +1560,7 @@ void NBLASTGuiPluginWindow::Init()
 	m_waitingforR = false;
 	m_waitingforFiji = false;
 	m_wtimer = new wxTimer(this, ID_WaitTimer);
+	m_idleTimer = new wxTimer(this, ID_IdleTimer);
 }
 
 
@@ -1592,7 +1689,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 
 	Thaw();
 	SetEvtHandlerEnabled(true);
-
+	//m_idleTimer->Start(50);
 	//m_wtimer->Start(50);
 }
 
@@ -1990,6 +2087,11 @@ void NBLASTGuiPluginWindow::OnClose(wxCloseEvent& event)
 	event.Skip();
 }
 
+void NBLASTGuiPluginWindow::OnShowHide(wxShowEvent& event)
+{
+	event.Skip();
+}
+
 void NBLASTGuiPluginWindow::OnInteropMessageReceived(wxCommandEvent & event)
 {
 	if (m_waitingforFiji)
@@ -2014,4 +2116,29 @@ void NBLASTGuiPluginWindow::OnInteropMessageReceived(wxCommandEvent & event)
 				m_results->LoadResults(respath);
 		}
 	}
+}
+
+void NBLASTGuiPluginWindow::OnIdle(wxTimerEvent& event)
+{
+	if (m_results)
+	{
+		if (wxGetKeyState(wxKeyCode('z')) && wxGetKeyState(WXK_CONTROL) && !wxGetKeyState(WXK_SHIFT) && !wxGetKeyState(WXK_ALT))
+			m_results->Undo();
+
+		if (wxGetKeyState(wxKeyCode('y')) && wxGetKeyState(WXK_CONTROL) && !wxGetKeyState(WXK_SHIFT) && !wxGetKeyState(WXK_ALT))
+			m_results->Redo();
+
+		if (wxGetKeyState(wxKeyCode('z')) && wxGetKeyState(WXK_CONTROL) && wxGetKeyState(WXK_SHIFT) && !wxGetKeyState(WXK_ALT))
+			m_results->Redo();
+	}
+}
+
+void NBLASTGuiPluginWindow::OnKeyDown(wxKeyEvent& event)
+{
+	event.Skip();
+}
+
+void NBLASTGuiPluginWindow::OnKeyUp(wxKeyEvent& event)
+{
+	event.Skip();
 }
