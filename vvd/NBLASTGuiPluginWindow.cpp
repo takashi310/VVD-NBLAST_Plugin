@@ -1611,7 +1611,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 	m_tb->AddTool(ID_SETTING, "Setting", wxNullBitmap, "Setting");
 	m_tb->SetToolSeparation(20);
 	m_tb->Realize();
-	sizert->Add(m_tb, 0, wxEXPAND);
+	sizert->Add(m_tb, 1, wxEXPAND);
 	itemBoxSizer2->Add(sizert, 0, wxEXPAND);
 	wxStaticLine *stl = new wxStaticLine(nbpanel);
 	itemBoxSizer2->Add(stl, 0, wxEXPAND);
@@ -1825,7 +1825,7 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 		if (!wxFileExists(rpath))
 			{wxMessageBox("Could not find Rscript binary", "NBLAST Plugin"); event.Skip(); return;}
 		if (nlibs.IsEmpty())
-			{wxMessageBox("Choose a target neuron file", "NBLAST Plugin"); event.Skip(); return;}
+			{wxMessageBox("Choose target neurons", "NBLAST Plugin"); event.Skip(); return;}
 		for (int i=0; i < nlibs.Count()-1; i++)
 		{
 			if (!wxFileExists(nlibs[i]))
@@ -1896,7 +1896,7 @@ wxWindow* NBLASTGuiPluginWindow::CreateExtraNBLASTControl(wxWindow* parent)
 	if (ch1)
 		ch1->SetValue(NBLASTGuiPlugin::GetExportSWCs());
 
-	wxCheckBox* ch2 = new wxCheckBox(panel, wxID_HIGHEST+10052, "Export MIP images");
+	wxCheckBox* ch2 = new wxCheckBox(panel, wxID_HIGHEST+10052, "Export MIPs");
 	ch2->Connect(ch2->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
 		wxCommandEventHandler(NBLASTGuiPluginWindow::OnMIPImageExportCheck), NULL, panel);
 	if (ch2)
