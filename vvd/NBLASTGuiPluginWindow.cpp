@@ -1897,7 +1897,11 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 
 wxWindow* NBLASTGuiPluginWindow::CreateExtraNBLASTControl(wxWindow* parent)
 {
-	wxPanel* panel = new wxPanel(parent, 0, wxDefaultPosition, wxSize(500, 90));
+#ifdef _WIN32
+    wxPanel* panel = new wxPanel(parent, 0, wxDefaultPosition, wxSize(500, 90));
+#else
+    wxPanel* panel = new wxPanel(parent, 0, wxDefaultPosition, wxSize(530, 90));
+#endif
 
 	wxBoxSizer *sizer = new wxStaticBoxSizer(
 		new wxStaticBox(panel, wxID_ANY, "Additional Options"), wxVERTICAL);
