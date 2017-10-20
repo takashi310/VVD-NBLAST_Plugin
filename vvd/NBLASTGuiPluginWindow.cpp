@@ -1009,7 +1009,7 @@ void NBLASTListCtrl::LoadResults(wxString csvfilepath)
 		SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
 }
 
-void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_swcprev, bool export_mip, bool pfx_score, bool pfx_db, bool zip)
+void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_swcprev, bool export_mip, bool export_vol, bool pfx_score, bool pfx_db, bool zip)
 {
 	wxFileOutputStream os(txtpath);
 	wxTextOutputStream tos(os);
@@ -1043,11 +1043,16 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 	wxString new_prjimg = outdir + wxFILE_SEP_PATH + fn.GetName() + _(".png");
 	wxCopyFile(prjimg, new_prjimg);
 
-	if ((export_swc || export_swcprev || export_mip) && !zip)
+	if ((export_swc || export_swcprev || export_mip || export_vol) && !zip)
 	{
 		long item = GetNextItem(-1);
 		if (item != -1)
 		{
+			wxProgressDialog *prg_diag = new wxProgressDialog(
+				"NBLAST Plugin: Exporting search results...",
+				"Please wait.",
+			GetItemCount(), 0, wxPD_SMOOTH|wxPD_ELAPSED_TIME|wxPD_AUTO_HIDE);
+			int count = 0;
 			do
 			{
 				wxString dbidstr = GetText(item, 1);
@@ -1089,8 +1094,17 @@ void NBLASTListCtrl::SaveResults(wxString txtpath, bool export_swc, bool export_
 						wxString new_swcpath = outdir + wxFILE_SEP_PATH + prefix + name + _(".swc");
 						if (wxFileExists(swcpath)) wxCopyFile(swcpath, new_swcpath);
 					}
+					if (export_vol)
+					{
+						wxString swcpath = m_dbdirs[dbid] + wxFILE_SEP_PATH + _("volume") + wxFILE_SEP_PATH + name + _(".nrrd");
+						wxString new_swcpath = outdir + wxFILE_SEP_PATH + prefix + name + _(".nrrd");
+						if (wxFileExists(swcpath)) wxCopyFile(swcpath, new_swcpath);
+					}
 				}
+				count++;
+				prg_diag->Update(count, "NBLAST Plugin: Exporting search results...");
 			} while ((item = GetNextItem(item, wxLIST_NEXT_BELOW)) != -1);
+			delete prg_diag;
 		}
 	}
 
@@ -1889,37 +1903,49 @@ wxWindow* NBLASTGuiPluginWindow::CreateExtraNBLASTControl(wxWindow* parent)
 		new wxStaticBox(panel, wxID_ANY, "Additional Options"), wxVERTICAL);
 
 	wxBoxSizer *group1 = new wxBoxSizer(wxHORIZONTAL);
+
+	wxStaticText *st = new wxStaticText(panel, 0, "Export:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	
-	wxCheckBox* ch1 = new wxCheckBox(panel, wxID_HIGHEST+10051, "Export SWC skeletones");
+	wxCheckBox* ch1 = new wxCheckBox(panel, wxID_HIGHEST+10051, "Skeletones");
 	ch1->Connect(ch1->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
 		wxCommandEventHandler(NBLASTGuiPluginWindow::OnSWCExportCheck), NULL, panel);
 	if (ch1)
 		ch1->SetValue(NBLASTGuiPlugin::GetExportSWCs());
 
-	wxCheckBox* ch2 = new wxCheckBox(panel, wxID_HIGHEST+10052, "Export MIPs");
+	wxCheckBox* ch2 = new wxCheckBox(panel, wxID_HIGHEST+10052, "MIPs");
 	ch2->Connect(ch2->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
 		wxCommandEventHandler(NBLASTGuiPluginWindow::OnMIPImageExportCheck), NULL, panel);
 	if (ch2)
 		ch2->SetValue(NBLASTGuiPlugin::GetExportMIPs());
 
-	wxCheckBox* ch3 = new wxCheckBox(panel, wxID_HIGHEST+10053, "Export preview images");
+	wxCheckBox* ch3 = new wxCheckBox(panel, wxID_HIGHEST+10053, "Skeletone Previews");
 	ch3->Connect(ch3->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
 		wxCommandEventHandler(NBLASTGuiPluginWindow::OnSWCImageExportCheck), NULL, panel);
 	if (ch3)
 		ch3->SetValue(NBLASTGuiPlugin::GetExportSWCPrevImgs());
 
+	wxCheckBox* chv = new wxCheckBox(panel, wxID_HIGHEST+10054, "Volumes");
+	chv->Connect(chv->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
+		wxCommandEventHandler(NBLASTGuiPluginWindow::OnVolumeExportCheck), NULL, panel);
+	if (chv)
+		chv->SetValue(NBLASTGuiPlugin::GetExportVolumes());
+
 	//group
 	group1->Add(10, 10);
+	group1->Add(st);
+	group1->Add(20, 10);
 	group1->Add(ch1);
 	group1->Add(20, 10);
 	group1->Add(ch2);
 	group1->Add(20, 10);
 	group1->Add(ch3);
 	group1->Add(20, 10);
+	group1->Add(chv);
+	group1->Add(20, 10);
 
 	wxBoxSizer *group2 = new wxBoxSizer(wxHORIZONTAL);
 
-	wxStaticText *st = new wxStaticText(panel, 0, "File Name Prefix:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+	st = new wxStaticText(panel, 0, "File Name Prefix:", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	
 	wxCheckBox* ch4 = new wxCheckBox(panel, wxID_HIGHEST+10054, "Score");
 	ch4->Connect(ch4->GetId(), wxEVT_COMMAND_CHECKBOX_CLICKED,
@@ -1979,6 +2005,15 @@ void NBLASTGuiPluginWindow::OnSWCImageExportCheck(wxCommandEvent& event)
 		plugin->SetExportSWCPrevImgs(ch3->GetValue());
 }
 
+void NBLASTGuiPluginWindow::OnVolumeExportCheck(wxCommandEvent& event)
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	wxCheckBox* chv = (wxCheckBox*)event.GetEventObject();
+
+	if (chv && plugin)
+		plugin->SetExportVolumes(chv->GetValue());
+}
+
 void NBLASTGuiPluginWindow::OnScorePrefixCheck(wxCommandEvent& event)
 {
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
@@ -2009,7 +2044,7 @@ void NBLASTGuiPluginWindow::OnSaveButtonClick( wxCommandEvent& event )
 	file_dlg.SetExtraControlCreator(CreateExtraNBLASTControl);
 	int rval = file_dlg.ShowModal();
 	if (rval == wxID_OK)
-		m_results->SaveResults(file_dlg.GetPath(), plugin->GetExportSWCs(), plugin->GetExportSWCPrevImgs(), plugin->GetExportMIPs(), plugin->GetPrefixScore(), plugin->GetPrefixDatabase());
+		m_results->SaveResults(file_dlg.GetPath(), plugin->GetExportSWCs(), plugin->GetExportSWCPrevImgs(), plugin->GetExportMIPs(), plugin->GetExportVolumes(), plugin->GetPrefixScore(), plugin->GetPrefixDatabase());
 }
 
 void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )

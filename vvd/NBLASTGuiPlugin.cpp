@@ -13,6 +13,7 @@ IMPLEMENT_DYNAMIC_CLASS(NBLASTGuiPlugin, wxObject)
 bool NBLASTGuiPlugin::m_exp_swc = false;
 bool NBLASTGuiPlugin::m_exp_swcprev = false;
 bool NBLASTGuiPlugin::m_exp_mip = false;
+bool NBLASTGuiPlugin::m_exp_vol = false;
 bool NBLASTGuiPlugin::m_pfx_score = true;
 bool NBLASTGuiPlugin::m_pfx_db = true;
 
@@ -327,6 +328,8 @@ void NBLASTGuiPlugin::LoadConfigFile()
 				m_exp_swcprev = bval;
 			if (fconfig.Read("export_mip", &bval))
 				m_exp_mip = bval;
+			if (fconfig.Read("export_vol", &bval))
+				m_exp_vol = bval;
 			if (fconfig.Read("prefix_score", &bval))
 				m_pfx_score = bval;
 			if (fconfig.Read("prefix_database", &bval))
@@ -346,6 +349,7 @@ void NBLASTGuiPlugin::SaveConfigFile()
 	fconfig.Write("export_swc", m_exp_swc);
 	fconfig.Write("export_swcprev", m_exp_swcprev);
 	fconfig.Write("export_mip", m_exp_mip);
+	fconfig.Write("export_vol", m_exp_vol);
 	fconfig.Write("prefix_score", m_pfx_score);
 	fconfig.Write("prefix_database", m_pfx_db);
 

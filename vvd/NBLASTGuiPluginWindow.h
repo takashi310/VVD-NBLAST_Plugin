@@ -202,7 +202,7 @@ public:
 	int GetImageId(long item, int col);
 	
 	void LoadResults(wxString csvfilepath);
-	void SaveResults(wxString txtpath, bool export_swc=false, bool export_swcprev=false, bool export_mip=false, bool pfx_score=false, bool pfx_db=false, bool zip=false);
+	void SaveResults(wxString txtpath, bool export_swc=false, bool export_swcprev=false, bool export_mip=false, bool export_vol=false, bool pfx_score=false, bool pfx_db=false, bool zip=false);
 	wxString GetListFilePath() {return m_rfpath;}
 
 	void DeleteSelection();
@@ -325,6 +325,7 @@ public:
 	void OnMIPImageExportCheck(wxCommandEvent& event);
 	void OnSWCImageExportCheck(wxCommandEvent& event);
 	void OnSWCExportCheck(wxCommandEvent& event);
+	void OnVolumeExportCheck(wxCommandEvent& event);
 	void OnScorePrefixCheck(wxCommandEvent& event);
 	void OnDatabasePrefixCheck(wxCommandEvent& event);
 	void OnKeyDown(wxKeyEvent& event);
