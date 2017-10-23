@@ -701,6 +701,17 @@ wxSize wxImagePanel::CalcImageSizeKeepAspectRatio(int w, int h)
 	return wxSize((int)nw, (int)nh);
 }
 
+double wxImagePanel::GetAspectRatio()
+{
+	if (!m_orgimage || !m_orgimage->IsOk())
+		return 0.0;
+	
+	int orgw = m_orgimage->GetWidth();
+	int orgh = m_orgimage->GetHeight();
+
+	return orgh != 0.0 ? orgw/orgh : 0.0;
+}
+
 void wxImagePanel::Render(wxDC& dc)
 {
 	dc.Clear();
@@ -1781,19 +1792,24 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 			while(tkz.HasMoreTokens())
 				con.Add(tkz.GetNextToken());
 
+			double aspect = 0.0;
+
 			if (con.GetCount() >= 1)
 			{
 				wxString imgpath1 = con[0];
 				m_swcImagePanel->SetImage(imgpath1, wxBITMAP_TYPE_PNG);
 				if (m_overlayChk->GetValue()) m_swcImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
 				m_swcImagePanel->Refresh();
+				aspect = m_swcImagePanel->GetAspectRatio();
 			}
 
 			if (con.GetCount() >= 2)
 			{
 				wxString imgpath2 = con[1];
 				m_mipImagePanel->SetImage(imgpath2, wxBITMAP_TYPE_PNG);
-				if (m_overlayChk->GetValue()) m_mipImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
+				double a2 = m_mipImagePanel->GetAspectRatio();
+				if (m_overlayChk->GetValue() && fabsl(aspect - a2) < 0.00001)
+					m_mipImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
 				m_mipImagePanel->Refresh();
 			}
 		}
@@ -2115,7 +2131,9 @@ void NBLASTGuiPluginWindow::OnOverlayCheck( wxCommandEvent& event )
 	if (m_swcImagePanel && m_mipImagePanel)
 	{
 		m_swcImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue());
-		m_mipImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue());
+		double a1 = m_swcImagePanel->GetAspectRatio();
+		double a2 = m_mipImagePanel->GetAspectRatio();
+		m_mipImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue() && fabsl(a1 - a2) < 0.00001);
 		m_swcImagePanel->Refresh();
 		m_mipImagePanel->Refresh();
 	}

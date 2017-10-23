@@ -160,6 +160,7 @@ public:
 	void ResetImage();
 	void ToggleOverlayVisibility(bool show);
 	wxSize CalcImageSizeKeepAspectRatio(int w, int h);
+	double GetAspectRatio();
 
 	void OnDraw(wxPaintEvent & evt);
 	void PaintNow();
