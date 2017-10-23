@@ -2093,7 +2093,7 @@ void NBLASTGuiPluginWindow::OnEditDBButtonClick( wxCommandEvent& event )
 			m_nlib_chks.push_back(new wxCheckBox(m_nbpanel, wxID_ANY, m_nlib_list[i].name));
 			gs->Add(m_nlib_chks[i], 0, wxALIGN_CENTER);
 		}
-		m_nlib_box->Add(gs, 0, wxALIGN_CENTER|wxALL, 10);
+		m_nlib_box->Add(gs, 0, wxALIGN_CENTER|wxALL, 5);
 
 		for (int i = 0; i < m_nlib_chks.size(); i++)
 			m_nlib_chks[i]->SetValue(m_nlib_list[i].state);
