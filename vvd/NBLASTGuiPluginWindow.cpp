@@ -583,6 +583,10 @@ void wxImagePanel::SetImage(wxString file, wxBitmapType format)
 	wxDELETE(m_orgimage);
 	wxDELETE(m_resized);
 	m_image.Destroy();
+	if (m_olimage.IsOk())
+		m_olimage.Destroy();
+	if (m_bgimage.IsOk())
+		m_bgimage.Destroy();
 
 	if (!wxFileExists(file))
 		return;
@@ -606,11 +610,20 @@ void wxImagePanel::SetOverlayImage(wxString file, wxBitmapType format, bool show
 	m_olimage.LoadFile(file, format);
 	if (!m_olimage.IsOk())
 		return;
-
-	ToggleOverlayVisibility(show);
 }
 
-void wxImagePanel::ToggleOverlayVisibility(bool show)
+void wxImagePanel::SetBackgroundImage(wxString file, wxBitmapType format)
+{
+	if (!wxFileExists(file) || !m_orgimage || !m_orgimage->IsOk())
+		return;
+
+	m_bgimage.Destroy();
+	m_bgimage.LoadFile(file, format);
+	if (!m_bgimage.IsOk())
+		return;
+}
+
+void wxImagePanel::UpdateImage(bool ov_show)
 {
 	if (!m_orgimage || !m_orgimage->IsOk())
 		return;
@@ -618,46 +631,62 @@ void wxImagePanel::ToggleOverlayVisibility(bool show)
 	if (!m_olimage.IsOk())
 		return;
 
-	if (!show)
-	{
-		m_image = m_orgimage->Copy();
-		return;
-	}
-
 	int w = m_orgimage->GetSize().GetWidth();
 	int h = m_orgimage->GetSize().GetHeight();
 
-	if (m_olimage.GetSize() != m_orgimage->GetSize())
+	if (m_olimage.IsOk() && m_olimage.GetSize() != m_orgimage->GetSize())
 		m_olimage = m_olimage.Scale( w, h, wxIMAGE_QUALITY_HIGH);
-
-	if (!m_olimage.IsOk())
-		return;
+	if (m_bgimage.IsOk() && m_bgimage.GetSize() != m_orgimage->GetSize())
+		m_bgimage = m_bgimage.Scale( w, h, wxIMAGE_QUALITY_HIGH);
 
 	m_image = m_orgimage->Copy();
-	
-	unsigned char *oldata = m_olimage.GetData();
-	unsigned char *imdata = m_image.GetData();
 
-	double alpha = 0.6;
-	double alpha2 = 0.8;
-
-	m_olimage.Blur(1);
-	
-	for (int y = 0; y < h; y++)
+	if (m_bgimage.IsOk())
 	{
-		for(int x = 0; x < w; x++)
+		unsigned char *bgdata = m_bgimage.GetData();
+		unsigned char *imdata = m_image.GetData();
+
+		double alpha = 0.6;
+		for (int y = 0; y < h; y++)
 		{
-			if (oldata[(y*w+x)*3] >= 64)
+			for(int x = 0; x < w; x++)
 			{
-				imdata[(y*w+x)*3]   = (unsigned char)(alpha*255.0 + (1.0-alpha)*(double)imdata[(y*w+x)*3]);
-				imdata[(y*w+x)*3+1] = (unsigned char)(alpha*0.0   + (1.0-alpha)*(double)imdata[(y*w+x)*3+1]);
-				imdata[(y*w+x)*3+2] = (unsigned char)(alpha*0.0   + (1.0-alpha)*(double)imdata[(y*w+x)*3+2]);
+				if (imdata[(y*w+x)*3] == 0 && imdata[(y*w+x)*3+1] == 0 && imdata[(y*w+x)*3+2] == 0)
+				{
+					imdata[(y*w+x)*3]   = bgdata[(y*w+x)*3];
+					imdata[(y*w+x)*3+1] = bgdata[(y*w+x)*3+1];
+					imdata[(y*w+x)*3+2] = bgdata[(y*w+x)*3+2];
+				}
 			}
-			else if (oldata[(y*w+x)*3] > 0)
+		}
+	}
+	
+	if (m_olimage.IsOk() && ov_show)
+	{
+		unsigned char *oldata = m_olimage.GetData();
+		unsigned char *imdata = m_image.GetData();
+
+		double alpha = 0.6;
+		double alpha2 = 0.8;
+
+		m_olimage.Blur(1);
+
+		for (int y = 0; y < h; y++)
+		{
+			for(int x = 0; x < w; x++)
 			{
-				imdata[(y*w+x)*3]   = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3]);
-				imdata[(y*w+x)*3+1] = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3+1]);
-				imdata[(y*w+x)*3+2] = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3+2]);
+				if (oldata[(y*w+x)*3] >= 64)
+				{
+					imdata[(y*w+x)*3]   = (unsigned char)(alpha*255.0 + (1.0-alpha)*(double)imdata[(y*w+x)*3]);
+					imdata[(y*w+x)*3+1] = (unsigned char)(alpha*0.0   + (1.0-alpha)*(double)imdata[(y*w+x)*3+1]);
+					imdata[(y*w+x)*3+2] = (unsigned char)(alpha*0.0   + (1.0-alpha)*(double)imdata[(y*w+x)*3+2]);
+				}
+				else if (oldata[(y*w+x)*3] > 0)
+				{
+					imdata[(y*w+x)*3]   = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3]);
+					imdata[(y*w+x)*3+1] = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3+1]);
+					imdata[(y*w+x)*3+2] = (unsigned char)(alpha2*0.0 + (1.0-alpha2)*(double)imdata[(y*w+x)*3+2]);
+				}
 			}
 		}
 	}
@@ -1784,7 +1813,7 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 		if (plugin && m_results && m_swcImagePanel && m_mipImagePanel)
 		{
 			wxString prjimg = m_results->GetListFilePath().BeforeLast(L'.', NULL) + _(".png");
-
+			
 			wxString str = wxString((char *)info->data);
 			wxStringTokenizer tkz(str, wxT(","));
 
@@ -1797,8 +1826,11 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 			if (con.GetCount() >= 1)
 			{
 				wxString imgpath1 = con[0];
+				wxString bkimgpath = imgpath1.BeforeLast(wxFILE_SEP_PATH, NULL) + wxFILE_SEP_PATH + _("bg.png");
 				m_swcImagePanel->SetImage(imgpath1, wxBITMAP_TYPE_PNG);
-				if (m_overlayChk->GetValue()) m_swcImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
+				m_swcImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
+				m_swcImagePanel->SetBackgroundImage(bkimgpath, wxBITMAP_TYPE_PNG);
+				m_swcImagePanel->UpdateImage(m_overlayChk->GetValue());
 				m_swcImagePanel->Refresh();
 				aspect = m_swcImagePanel->GetAspectRatio();
 			}
@@ -1806,10 +1838,13 @@ void NBLASTGuiPluginWindow::doAction(ActionInfo *info)
 			if (con.GetCount() >= 2)
 			{
 				wxString imgpath2 = con[1];
+				wxString bkimgpath = imgpath2.BeforeLast(wxFILE_SEP_PATH, NULL) + wxFILE_SEP_PATH + _("bg.png");
 				m_mipImagePanel->SetImage(imgpath2, wxBITMAP_TYPE_PNG);
 				double a2 = m_mipImagePanel->GetAspectRatio();
-				if (m_overlayChk->GetValue() && fabsl(aspect - a2) < 0.00001)
+				if (fabsl(aspect - a2) < 0.00001)
 					m_mipImagePanel->SetOverlayImage(prjimg, wxBITMAP_TYPE_PNG);
+				m_mipImagePanel->SetBackgroundImage(bkimgpath, wxBITMAP_TYPE_PNG);
+				m_mipImagePanel->UpdateImage(m_overlayChk->GetValue());
 				m_mipImagePanel->Refresh();
 			}
 		}
@@ -2130,10 +2165,10 @@ void NBLASTGuiPluginWindow::OnOverlayCheck( wxCommandEvent& event )
 {
 	if (m_swcImagePanel && m_mipImagePanel)
 	{
-		m_swcImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue());
+		m_swcImagePanel->UpdateImage(m_overlayChk->GetValue());
 		double a1 = m_swcImagePanel->GetAspectRatio();
 		double a2 = m_mipImagePanel->GetAspectRatio();
-		m_mipImagePanel->ToggleOverlayVisibility(m_overlayChk->GetValue() && fabsl(a1 - a2) < 0.00001);
+		m_mipImagePanel->UpdateImage(m_overlayChk->GetValue() && fabsl(a1 - a2) < 0.00001);
 		m_swcImagePanel->Refresh();
 		m_mipImagePanel->Refresh();
 	}

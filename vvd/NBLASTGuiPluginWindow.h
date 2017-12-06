@@ -149,6 +149,7 @@ class wxImagePanel : public wxPanel
 	wxImage  m_image;
 	wxImage  *m_orgimage;
 	wxImage  m_olimage;
+	wxImage  m_bgimage;
 	wxBitmap *m_resized;
 	int m_w, m_h;
 
@@ -157,8 +158,9 @@ public:
 	~wxImagePanel();
 	void SetImage(wxString file, wxBitmapType format);
 	void SetOverlayImage(wxString file, wxBitmapType format, bool show=true);
+	void SetBackgroundImage(wxString file, wxBitmapType format);
 	void ResetImage();
-	void ToggleOverlayVisibility(bool show);
+	void UpdateImage(bool ov_show);
 	wxSize CalcImageSizeKeepAspectRatio(int w, int h);
 	double GetAspectRatio();
 
