@@ -20,7 +20,6 @@ bool NBLASTGuiPlugin::m_pfx_db = true;
 NBLASTGuiPlugin::NBLASTGuiPlugin()
 	: wxGuiPluginBase(NULL, NULL), m_R_process(NULL)
 {
-
 }
 
 NBLASTGuiPlugin::NBLASTGuiPlugin(wxEvtHandler * handler, wxWindow * vvd)
@@ -30,7 +29,6 @@ NBLASTGuiPlugin::NBLASTGuiPlugin(wxEvtHandler * handler, wxWindow * vvd)
 
 NBLASTGuiPlugin::~NBLASTGuiPlugin()
 {
-
 }
 
 bool NBLASTGuiPlugin::runNBLAST()
@@ -47,14 +45,45 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
 	if (!vframe) return false;
 
+	int type = vframe->GetCurSelType();
 	VolumeData *vd = vframe->GetCurSelVol();
-	if (!vd) return false;
-
-	wxString tempvdpath = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.nrrd";
-	vd->Save(tempvdpath, 2, false, true, true, false); 
-	wxString maskfname = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.msk";
-	if (wxFileExists(maskfname))
-		wxRenameFile(maskfname, tempvdpath, true);
+	MeshData *md = vframe->GetCurSelMesh();
+	
+	wxString tempdpath = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH;
+	wxString maskfname = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH;
+	
+	if (vd && type == 2)
+	{
+		tempdpath += "vvdnbtmpv.nrrd";
+		maskfname += "vvdnbtmpv.msk";
+		//save mask
+		if (vd->GetTexture()->nmask() != -1)
+		{
+			vd->GetVR()->return_mask();
+			Nrrd *data = vd->GetTexture()->get_nrrd(vd->GetTexture()->nmask());
+			double spcx, spcy, spcz;
+			vd->GetSpacings(spcx, spcy, spcz);
+			
+			if (data)
+			{
+				MSKWriter msk_writer;
+				msk_writer.SetData(data);
+				msk_writer.SetSpacings(spcx, spcy, spcz);
+				msk_writer.Save(maskfname.ToStdWstring(), 0);
+				wxRenameFile(maskfname, tempdpath, true);
+			}
+		}
+		else
+			vd->Save(tempdpath, 2, false, true, true, false); 
+	} 
+	else if (md && type == 3)
+	{
+		tempdpath += "vvdnbtmpsk.swc";
+		wxString src = md->GetPath();
+		wxCopyFile(src, tempdpath);
+	} 
+	else
+		return false;
 
 	m_R_path = rpath;
 	m_nlib_path = nlibpath;
@@ -73,7 +102,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	//m_out_dir.Replace("\\", "\\\\");
 	//m_ofname.Replace("\\", "\\\\");
     
-    wxString com = "call " + _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempvdpath+_("\" ") +
+    wxString com = "call " + _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempdpath+_("\" ") +
     _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ") + _("\"")+m_rnum+_("\" ");
 	if (!m_db_names.IsEmpty())
 		com += _("\"")+m_db_names+_("\"");
@@ -88,7 +117,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	expath = expath.BeforeLast(wxFILE_SEP_PATH, NULL);
 	rscript = expath + "/../Resources/nblast_search.R";
     wxString term = expath + "/../Resources/term.sh";
-    wxString com = _("bash \'")+term+_("\' ") + _("\"") + _("\'")+m_R_path+_("\' ") + _("\'")+rscript+_("\' ") + _("\'")+tempvdpath+_("\' ") +
+    wxString com = _("bash \'")+term+_("\' ") + _("\"") + _("\'")+m_R_path+_("\' ") + _("\'")+rscript+_("\' ") + _("\'")+tempdpath+_("\' ") +
     _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ") + _("\'")+m_rnum+_("\' ");
 	if (!m_db_names.IsEmpty())
 		com += _("\'")+m_db_names+_("\' ");
@@ -97,6 +126,65 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
     wxString act = "osascript -e 'tell application \"System Events\" to set frontmost of the first process whose unix id is "+wxString::Format("%lu", wxGetProcessId())+" to true'";
     wxExecute(act, wxEXEC_HIDE_CONSOLE|wxEXEC_ASYNC);
 #endif
+
+	return true;
+}
+
+bool NBLASTGuiPlugin::runNBLASTremote(wxString url, wxString usr, wxString pwd, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names)
+{
+	if (outdir.IsEmpty() || ofname.IsEmpty() || rnum.IsEmpty())
+		return false;
+	
+	VRenderFrame *vframe = (VRenderFrame *)m_vvd;
+	if (!vframe) return false;
+
+	VolumeData *vd = vframe->GetCurSelVol();
+	if (!vd || !vd->GetTexture() || !vd->GetVR()) return false;
+	
+	wxString tempvdpath = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.nrrd";
+	wxString maskfname = wxStandardPaths::Get().GetTempDir() + wxFILE_SEP_PATH + "vvdnbtmpv.msk";
+
+	//save mask
+	if (vd->GetTexture()->nmask() != -1)
+	{
+		vd->GetVR()->return_mask();
+		Nrrd *data = vd->GetTexture()->get_nrrd(vd->GetTexture()->nmask());
+		double spcx, spcy, spcz;
+		vd->GetSpacings(spcx, spcy, spcz);
+
+		if (data)
+		{
+			MSKWriter msk_writer;
+			msk_writer.SetData(data);
+			msk_writer.SetSpacings(spcx, spcy, spcz);
+			msk_writer.Save(maskfname.ToStdWstring(), 0);
+			wxRenameFile(maskfname, tempvdpath, true);
+		}
+	}
+	else
+		vd->Save(tempvdpath, 2, false, true, true, false); 
+
+	m_nlib_path = nlibpath;
+	m_out_dir = outdir;
+	m_ofname = ofname;
+	m_rnum = rnum;
+	m_db_names = db_names;
+
+	wxString inurl = url + "opt/NBLAST/input/"; // "sftp://10.36.13.16:22//opt/NBLAST/";
+	int len = 16;
+	char s[17];
+	const char alphanum[] =
+		"0123456789"
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz";
+
+	for (int i = 0; i < len; ++i) {
+		s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+	}
+	s[len] = 0;
+	wxString randname(s);
+	wxString upvolname = randname + ".nrrd";
+	vframe->UploadFileRemote(inurl, upvolname, tempvdpath, usr, pwd);
 
 	return true;
 }

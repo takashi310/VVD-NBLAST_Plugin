@@ -23,8 +23,83 @@
 #include "Formats/png_resource.h"
 #include "img/icons.h"
 
+
+wxUsrPwdDialog::wxUsrPwdDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+								const wxPoint &pos, const wxSize &size, long style)
+: wxDialog (parent, id, title, pos, size, style)
+{
+	#ifdef _WIN32
+    int stsize = 60;
+#else
+    int stsize = 70;
+#endif
+
+	SetEvtHandlerEnabled(false);
+	Freeze();
+
+	wxBoxSizer* itemBoxSizer = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
+
+	sizer1->Add(5, 5);
+	wxStaticText* st = new wxStaticText( this, wxID_STATIC, _("User:"), wxDefaultPosition, wxSize(stsize, -1), 0 );
+	sizer1->Add(st, 0, wxALIGN_LEFT|wxLEFT|wxRIGHT|wxTOP, 5);
+	m_usrtxt = new wxTextCtrl( this, wxID_ANY, "", wxDefaultPosition, wxSize(200, -1));
+	sizer1->Add(m_usrtxt, 0, wxALIGN_LEFT|wxLEFT|wxRIGHT|wxTOP, 5);
+
+	itemBoxSizer->Add(10, 5);
+	itemBoxSizer->Add(sizer1, 0, wxALIGN_CENTER);
+
+	wxBoxSizer *sizer2 = new wxBoxSizer(wxHORIZONTAL);
+	sizer2->Add(5, 5);
+	st = new wxStaticText( this, wxID_STATIC, _("Password:"), wxDefaultPosition, wxSize(stsize, -1), 0 );
+	sizer2->Add(st, 0, wxALIGN_LEFT|wxLEFT|wxRIGHT|wxTOP, 5);
+	m_pwdtxt = new wxTextCtrl( this, wxID_ANY, "", wxDefaultPosition, wxSize(200, -1), wxTE_PASSWORD);
+	sizer2->Add(m_pwdtxt, 0, wxALIGN_LEFT|wxLEFT|wxRIGHT|wxTOP, 5);
+
+	itemBoxSizer->Add(5, 5);
+	itemBoxSizer->Add(sizer2, 1, wxALIGN_CENTER);
+
+	wxBoxSizer *sizerb = new wxBoxSizer(wxHORIZONTAL);
+	wxButton *b = new wxButton(this, wxID_OK, _("OK"), wxDefaultPosition, wxDefaultSize);
+	wxButton *c = new wxButton(this, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxDefaultSize);
+	sizerb->Add(5,10);
+    sizerb->Add(b);
+    sizerb->Add(5,10);
+	sizerb->Add(c);
+	sizerb->Add(10,10);
+	itemBoxSizer->Add(10, 10);
+	itemBoxSizer->Add(sizerb, 0, wxALIGN_RIGHT);
+	itemBoxSizer->Add(10, 10);
+	
+	SetSizer(itemBoxSizer);
+
+	Thaw();
+	SetEvtHandlerEnabled(true);
+}
+
+wxString wxUsrPwdDialog::GetUserNameText()
+{
+	return m_usrtxt ? m_usrtxt->GetValue() : wxString();
+}
+
+wxString wxUsrPwdDialog::GetPasswordText()
+{
+	return m_pwdtxt ? m_pwdtxt->GetValue() : wxString();
+}
+
+void wxUsrPwdDialog::SetUserNameText(wxString usr)
+{
+	m_usrtxt->SetValue(usr);
+}
+
+void wxUsrPwdDialog::SetPasswordText(wxString pwd)
+{
+	m_pwdtxt->SetValue(pwd);
+}
+
 BEGIN_EVENT_TABLE(NBLASTDatabaseListCtrl, wxListCtrl)
 	EVT_LIST_ITEM_DESELECTED(wxID_ANY, NBLASTDatabaseListCtrl::OnEndSelection)
+	EVT_LIST_ITEM_SELECTED(wxID_ANY, NBLASTDatabaseListCtrl::OnSelection)
 	EVT_LIST_ITEM_ACTIVATED(wxID_ANY, NBLASTDatabaseListCtrl::OnAct)
 	EVT_TEXT(ID_NameDispText, NBLASTDatabaseListCtrl::OnNameDispText)
 	EVT_TEXT_ENTER(ID_NameDispText, NBLASTDatabaseListCtrl::OnEnterInTextCtrl)
@@ -38,6 +113,7 @@ BEGIN_EVENT_TABLE(NBLASTDatabaseListCtrl, wxListCtrl)
 	EVT_MOUSEWHEEL(NBLASTDatabaseListCtrl::OnScroll)
 	EVT_LEFT_DCLICK(NBLASTDatabaseListCtrl::OnLeftDClick)
 	EVT_SIZE(NBLASTDatabaseListCtrl::OnResize)
+	EVT_BUTTON(ID_Setting, NBLASTDatabaseListCtrl::OnSettingButton)
 END_EVENT_TABLE()
 
 NBLASTDatabaseListCtrl::NBLASTDatabaseListCtrl(
@@ -61,7 +137,10 @@ wxListCtrl(parent, id, pos, size, style),
 	SetColumnWidth(0, 150);
 	itemCol.SetText("Path");
 	this->InsertColumn(1, itemCol);
-	SetColumnWidth(1, 350);
+	SetColumnWidth(1, 300);
+	itemCol.SetText("");
+	this->InsertColumn(2, itemCol);
+	SetColumnWidth(2, 50);
 	
 	//frame edit
 	m_name_disp = new wxTextCtrl(this, ID_NameDispText, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER);
@@ -69,6 +148,9 @@ wxListCtrl(parent, id, pos, size, style),
 
 	m_path_disp = new wxFilePickerCtrl(this, ID_DescriptionText, "", _("Choose a target neuron library"), "*.rds", wxDefaultPosition, wxDefaultSize, wxFLP_DEFAULT_STYLE|wxFLP_SMALL);
 	m_path_disp->Hide();
+
+	m_setting_b = new wxButton(this, ID_Setting, _("Setting"), wxDefaultPosition, wxDefaultSize);
+	m_setting_b->Hide();
 
 	Thaw();
 	SetEvtHandlerEnabled(true);
@@ -109,14 +191,8 @@ void NBLASTDatabaseListCtrl::SetColumnWidthAuto()
 {
 	wxSize sz = GetSize();
 	int w1 = GetColumnWidth(0);
-	SetEvtHandlerEnabled(false);
-	SetColumnWidth(1, wxLIST_AUTOSIZE);
-	SetEvtHandlerEnabled(true);
-	int w2 = GetColumnWidth(1);
-	if (w1+w2 < sz.GetWidth()-5)
-		SetColumnWidth(1, sz.GetWidth()-5-w1);
-	else
-		SetColumnWidth(1, wxLIST_AUTOSIZE);
+	int w3 = GetColumnWidth(2);
+	SetColumnWidth(1, sz.GetWidth()-5-w1-w3);
 }
 
 void NBLASTDatabaseListCtrl::OnResize(wxSizeEvent& event)
@@ -129,6 +205,7 @@ void NBLASTDatabaseListCtrl::UpdateList()
 {
 	m_name_disp->Hide();
 	m_path_disp->Hide();
+	m_setting_b->Hide();
     m_editing_item = -1;
 
 	DeleteAllItems();
@@ -142,6 +219,7 @@ void NBLASTDatabaseListCtrl::UpdateText()
 {
 	m_name_disp->Hide();
 	m_path_disp->Hide();
+	m_setting_b->Hide();
 	m_editing_item = -1;
 
 	for (int i=0; i<(int)m_list.size(); i++)
@@ -208,16 +286,43 @@ void NBLASTDatabaseListCtrl::ShowTextCtrls(long item)
 		m_name_disp->Show();
 
 		int c0w = rect.GetWidth();
+		GetSubItemRect(item, 2, rect);
+		int c2w = rect.GetWidth();
 		//add description text
 		GetSubItemRect(item, 1, rect);
 		str = GetText(item, 1);
 		wxSize sz = rect.GetSize();
 		int win_w = GetSize().GetWidth();
-		sz.SetWidth(win_w-c0w-3); 
+		sz.SetWidth(win_w-c0w-c2w-5); 
 		m_path_disp->SetPosition(rect.GetTopLeft());
 		m_path_disp->SetSize(sz);
 		m_path_disp->SetPath(str);
 		m_path_disp->Show();
+
+		GetSubItemRect(item, 2, rect);
+		rect.SetLeft(rect.GetLeft());
+		rect.SetRight(rect.GetRight());
+		m_setting_b->SetPosition(rect.GetTopLeft());
+		m_setting_b->SetSize(rect.GetSize());
+		m_setting_b->Show();
+	}
+}
+
+void NBLASTDatabaseListCtrl::OnSelection(wxListEvent &event)
+{
+	long item = GetNextItem(-1,
+		wxLIST_NEXT_ALL,
+		wxLIST_STATE_SELECTED);
+	m_editing_item = item;
+	if (item != -1 && !m_name_disp->IsShown())
+	{
+		wxRect rect;
+		GetSubItemRect(item, 2, rect);
+		rect.SetLeft(rect.GetLeft());
+		rect.SetRight(rect.GetRight());
+		m_setting_b->SetPosition(rect.GetTopLeft());
+		m_setting_b->SetSize(rect.GetSize());
+		m_setting_b->Show();
 	}
 }
 
@@ -404,12 +509,42 @@ void NBLASTDatabaseListCtrl::OnColumnSizeChanged(wxListEvent &event)
 	m_name_disp->SetSize(rect.GetSize());
 	
 	int c0w = rect.GetWidth();
+	GetSubItemRect(m_editing_item, 2, rect);
+	int c2w = rect.GetWidth();
 	GetSubItemRect(m_editing_item, 1, rect);
 	wxSize sz = rect.GetSize();
 	int win_w = GetSize().GetWidth();
-	sz.SetWidth(win_w-c0w-3);
+	sz.SetWidth(win_w-c0w-c2w-5);
 	m_path_disp->SetPosition(rect.GetTopLeft());
 	m_path_disp->SetSize(sz);
+
+	GetSubItemRect(m_editing_item, 2, rect);
+	rect.SetLeft(rect.GetLeft());
+	rect.SetRight(rect.GetRight());
+	m_setting_b->SetPosition(rect.GetTopLeft());
+	m_setting_b->SetSize(rect.GetSize());
+}
+
+void NBLASTDatabaseListCtrl::OnSettingButton(wxCommandEvent &event)
+{
+	wxUsrPwdDialog updlg(this, wxID_ANY, "Set User/Password", wxDefaultPosition, wxSize(350, 150));
+	long item = GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+	if (item >= 0 && item < m_list.size())
+	{
+		updlg.SetUserNameText(m_list[item].usr);
+		updlg.SetPasswordText(m_list[item].pwd);
+	}
+	
+	if (updlg.ShowModal() == wxID_OK)
+	{
+		if (item >= 0 && item < m_list.size())
+		{
+			wxString usr = updlg.GetUserNameText();
+			wxString pwd = updlg.GetPasswordText();
+			m_list[item].usr = usr;
+			m_list[item].pwd = pwd;
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -511,6 +646,8 @@ void wxDBListDialog::LoadList()
 				m_list->Add(tokens[1], tokens[0]);
 			if (tokens.Count() >= 3 && tokens[2] == "true")
 				m_list->SetState(m_list->GetItemCount()-1, true);
+			if (tokens.Count() >= 5)
+				m_list->SetUsrPwd(m_list->GetItemCount()-1, tokens[3], tokens[4]);
 		}
 	}
 }
@@ -536,8 +673,8 @@ void wxDBListDialog::SaveList()
 	if (list.size() > 0)
 	{
 		for (int i = 0; i < list.size()-1; i++)
-			tos << list[i].name << "\t" << list[i].path << "\t" << (list[i].state ? "true" : "false") << endl;
-		tos << list[list.size()-1].name << "\t" << list[list.size()-1].path << "\t" << (list[list.size()-1].state ? "true" : "false");
+			tos << list[i].name << "\t" << list[i].path << "\t" << (list[i].state ? "true" : "false") << "\t" << list[i].usr << "\t" << list[i].pwd << endl;
+		tos << list[list.size()-1].name << "\t" << list[list.size()-1].path << "\t" << (list[list.size()-1].state ? "true" : "false") << "\t" << list[list.size()-1].usr << "\t" << list[list.size()-1].pwd;
 	}
 }
 
@@ -1910,8 +2047,11 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 		VRenderFrame *vframe = (VRenderFrame *)plugin->GetVVDMainFrame();
 		if (vframe)
 		{
+			int type = vframe->GetCurSelType();
 			VolumeData *vd = vframe->GetCurSelVol();
-			if (vd)
+			MeshData *md = vframe->GetCurSelMesh();
+
+			if (vd && type == 2)
 			{
 				if (vd->GetName().Find("skeleton") == wxNOT_FOUND)
 				{
@@ -1934,6 +2074,13 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 					if (wxFileExists(respath) && m_results)
 						m_results->LoadResults(respath);
 				}
+			}
+			if (md && type == 3)
+			{
+				plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum, nlibname);
+				wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
+				if (wxFileExists(respath) && m_results)
+					m_results->LoadResults(respath);
 			}
 		}
 

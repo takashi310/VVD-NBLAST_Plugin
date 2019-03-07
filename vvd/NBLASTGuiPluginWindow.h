@@ -18,10 +18,30 @@
 #define SYMBOL_NBLASTGuiPluginWindow_SIZE wxSize(400, 300)
 #define SYMBOL_NBLASTGuiPluginWindow_POSITION wxDefaultPosition
 
+class wxUsrPwdDialog : public wxDialog
+{
+public:
+	wxUsrPwdDialog(wxWindow* parent, wxWindowID id, const wxString &title,
+					const wxPoint &pos = wxDefaultPosition,
+					const wxSize &size = wxDefaultSize,
+					long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
+	wxString GetUserNameText();
+	wxString GetPasswordText();
+	void SetUserNameText(wxString usr);
+	void SetPasswordText(wxString pwd);
+
+private:
+	wxTextCtrl *m_usrtxt;
+	wxTextCtrl *m_pwdtxt;
+};
+
 struct NBLASTDBListItemData
 {
 	wxString name;
 	wxString path;
+	wxString usr;
+	wxString pwd;
 	bool state;
 };
 
@@ -31,7 +51,8 @@ class NBLASTDatabaseListCtrl : public wxListCtrl
 	{
 		ID_NameDispText = wxID_HIGHEST+12001,
 		ID_ColorPicker,
-		ID_DescriptionText
+		ID_DescriptionText,
+		ID_Setting
 	};
 
 public:
@@ -61,11 +82,34 @@ public:
 		else return false;
 	}
 
+	void SetUsrPwd(size_t id, wxString usr, wxString pwd)
+	{
+		if (id < m_list.size())
+		{
+			m_list[id].usr = usr;
+			m_list[id].pwd = pwd;
+		}
+	}
+	void GetUsrPwd(size_t id, wxString &usr, wxString &pwd)
+	{
+		if (id < m_list.size())
+		{
+			usr = m_list[id].usr;
+			pwd = m_list[id].pwd;
+		}
+		else
+		{
+			usr = wxString();
+			pwd = wxString();
+		}
+	}
+
 	std::vector<NBLASTDBListItemData> getList() { return m_list; }
 private:
 	
 	wxTextCtrl *m_name_disp;
 	wxFilePickerCtrl *m_path_disp;
+	wxButton *m_setting_b;
 	std::vector<NBLASTDBListItemData> m_list;
 
 	long m_editing_item;
@@ -77,6 +121,7 @@ private:
 	void EndEdit();
 	void OnAct(wxListEvent &event);
 	void OnEndSelection(wxListEvent &event);
+	void OnSelection(wxListEvent &event);
 	void OnNameDispText(wxCommandEvent& event);
 	void OnPathText(wxCommandEvent& event);
 	void OnEnterInTextCtrl(wxCommandEvent& event);
@@ -94,6 +139,8 @@ private:
 	void OnScroll(wxMouseEvent& event);
 
 	void OnResize(wxSizeEvent& event);
+
+	void OnSettingButton(wxCommandEvent &event);
 
 	void ShowTextCtrls(long item);
 

@@ -55,6 +55,7 @@ public:
 
 	bool runNBLAST();
 	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString());
+	bool runNBLASTremote(wxString url, wxString usr, wxString pwd, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString());
 	bool LoadSWC(wxString name, wxString swc_zip_path);
 	bool LoadFiles(wxString path);
 	bool skeletonizeMask();
@@ -72,6 +73,7 @@ private:
 	wxStopWatch m_watch;
 	wxString m_pid;
 	wxProcess *m_R_process;
+
 	static bool m_exp_swc;
 	static bool m_exp_swcprev;
 	static bool m_exp_mip;
