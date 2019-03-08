@@ -36,6 +36,12 @@ if (length(args) >= 6) {
   dbnames = paste(basename(nlibs), collapse=",")
 }
 
+if (length(args) >= 7) {
+  normalization = args[7]
+} else {
+  normalization = "mean"
+}
+
 cat("Loading NAT...")
 
 if (!require("nat",character.only = TRUE)) {
@@ -112,42 +118,46 @@ tryCatch({
     fwdscores <- unlist(fwdscores)
     names(fwdscores) <- scnames
     
-    cat("calculating reverse scores...\n")
-    revscores <- foreach(aa = a, bb = b) %dopar% {
-      if (aa == 1) {
-        nblast(dp[aa:bb], qdp, normalised=T, UseAlpha=T, .progress='text')
-      } else {
-        nblast(dp[aa:bb], qdp, normalised=T, UseAlpha=T)
+    if (normalization == "mean") {
+      cat("calculating reverse scores...\n")
+      revscores <- foreach(aa = a, bb = b) %dopar% {
+        if (aa == 1) {
+          nblast(dp[aa:bb], qdp, normalised=T, UseAlpha=T, .progress='text')
+        } else {
+          nblast(dp[aa:bb], qdp, normalised=T, UseAlpha=T)
+        }
       }
+      scnames <- list()
+      for (j in 1:length(revscores)) scnames <- c(scnames, names(revscores[[j]]))
+      revscores <- unlist(revscores)
+      names(revscores) <- scnames
+      
+      scores <- (fwdscores + revscores) / 2
+    } else {
+      scores <- fwdscores
     }
-    scnames <- list()
-    for (j in 1:length(revscores)) scnames <- c(scnames, names(revscores[[j]]))
-    revscores <- unlist(revscores)
-    names(revscores) <- scnames
     
-    scores <- (fwdscores + revscores) / 2
-    
+    cat("sorting scores...\n")
     scores <- sort(scores, dec=T)
     
-    cat("getting results...\n")
     if (length(scores) <= resultnum) {
-      results <- as.neuronlist(dp[names(scores)])
+      #results <- as.neuronlist(dp[names(scores)])
       slist <- scores
     } else {
-      results <- as.neuronlist(dp[names(scores)[1:resultnum]])
+      #results <- as.neuronlist(dp[names(scores)[1:resultnum]])
       slist <- scores[1:resultnum]
     }
     
     cat("setting names...\n")
-    for (j in 1:length(results)) {
-      names(results)[j] <- paste(names(results[j]), as.character(i-1), sep=",")
-    }
+    #for (j in 1:length(results)) {
+    #  names(results)[j] <- paste(names(results[j]), as.character(i-1), sep=",")
+    #}
     for (j in 1:length(slist)) {
       names(slist)[j] <- paste(names(slist[j]), as.character(i-1), sep=",")
     }
     
     cat("combining lists...\n")
-    allres <- c(allres, results)
+    #allres <- c(allres, results)
     allscr <- c(allscr, slist)
     
     rm(dp)
@@ -156,10 +166,10 @@ tryCatch({
   
   allscr = sort(allscr, dec=T)
   if (length(allscr) <= resultnum) {
-    results = allres[names(allscr)]
+    #results = allres[names(allscr)]
     slist = allscr
   } else {
-    results = allres[names(allscr)[1:resultnum]]
+    #results = allres[names(allscr)[1:resultnum]]
     slist = allscr[1:resultnum]
   }
   
