@@ -37,7 +37,7 @@ bool NBLASTGuiPlugin::runNBLAST()
 	return runNBLAST(m_R_path, m_nlib_path, m_out_dir, m_ofname, m_rnum, m_db_names);
 }
 
-bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names)
+bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names, wxString scmethod)
 {
 	if (!wxFileExists(rpath) || outdir.IsEmpty() || ofname.IsEmpty() || rnum.IsEmpty())
 		return false;
@@ -91,6 +91,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	m_ofname = ofname;
 	m_rnum = rnum;
 	m_db_names = db_names;
+	m_scmtd = scmethod;
 
 	wxString rscript;
 #ifdef _WIN32
@@ -104,8 +105,11 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
     
     wxString com = "call " + _("\"")+m_R_path+_("\" ") + _("\"")+rscript+_("\" ") + _("\"")+tempdpath+_("\" ") +
     _("\"")+m_nlib_path+_("\" ") + _("\"")+m_ofname+_("\" ") + _("\"")+m_out_dir+_("\" ") + _("\"")+m_rnum+_("\" ");
-	if (!m_db_names.IsEmpty())
-		com += _("\"")+m_db_names+_("\"");
+	if (!m_db_names.IsEmpty()) {
+		com += _("\"") + m_db_names + _("\" ");
+		if (!m_scmtd.IsEmpty())
+			com += _("\"") + m_scmtd + _("\" ");
+	}
     wxExecuteEnv env;
     wxString envpath;
     wxGetEnv(_("PATH"), &envpath);
@@ -119,8 +123,11 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
     wxString term = expath + "/../Resources/term.sh";
     wxString com = _("bash \'")+term+_("\' ") + _("\"") + _("\'")+m_R_path+_("\' ") + _("\'")+rscript+_("\' ") + _("\'")+tempdpath+_("\' ") +
     _("\'")+m_nlib_path+_("\' ") + _("\'")+m_ofname+_("\' ") + _("\'")+m_out_dir+_("\' ") + _("\'")+m_rnum+_("\' ");
-	if (!m_db_names.IsEmpty())
-		com += _("\'")+m_db_names+_("\' ");
+	if (!m_db_names.IsEmpty()) {
+		com += _("\"") + m_db_names + _("\" ");
+		if (!m_scmtd.IsEmpty())
+			com += _("\"") + m_scmtd + _("\" ");
+	}
 	com += _("\"");
     wxExecute(com, wxEXEC_SYNC);
     wxString act = "osascript -e 'tell application \"System Events\" to set frontmost of the first process whose unix id is "+wxString::Format("%lu", wxGetProcessId())+" to true'";
@@ -130,7 +137,7 @@ bool NBLASTGuiPlugin::runNBLAST(wxString rpath, wxString nlibpath, wxString outd
 	return true;
 }
 
-bool NBLASTGuiPlugin::runNBLASTremote(wxString url, wxString usr, wxString pwd, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names)
+bool NBLASTGuiPlugin::runNBLASTremote(wxString url, wxString usr, wxString pwd, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names, wxString scmethod)
 {
 	if (outdir.IsEmpty() || ofname.IsEmpty() || rnum.IsEmpty())
 		return false;
@@ -303,7 +310,7 @@ void NBLASTGuiPlugin::OnInit()
 	LoadConfigFile();
 
 #ifdef _WIN32
-	if (m_R_path.IsEmpty())
+	if (m_R_path.IsEmpty() || !wxFileExists(m_R_path))
 	{
 		WCHAR szp64[MAX_PATH], szp[MAX_PATH];
 		ExpandEnvironmentStrings(L"%ProgramW6432%", szp64, ARRAYSIZE(szp64));
@@ -359,14 +366,16 @@ void NBLASTGuiPlugin::OnInit()
         m_R_path = rpath;
 	}
 #else
-	if (m_R_path.IsEmpty() && wxFileExists("/Library/Frameworks/R.framework/Resources/bin/Rscript"))
+	if ( (m_R_path.IsEmpty() || !wxFileExists(m_R_path)) && wxFileExists("/Library/Frameworks/R.framework/Resources/bin/Rscript") )
         m_R_path = _("/Library/Frameworks/R.framework/Resources/bin/Rscript");
 #endif
 
-	if (m_out_dir.IsEmpty())
+	if (m_out_dir.IsEmpty() || !wxDirExists(m_out_dir))
 		m_out_dir = wxStandardPaths::Get().GetTempDir();
 	if (m_rnum.IsEmpty())
 		m_rnum = wxT("100");
+	if (m_scmtd.IsEmpty())
+		m_scmtd = wxT("forward");
 }
 
 void NBLASTGuiPlugin::OnDestroy()
@@ -422,6 +431,9 @@ void NBLASTGuiPlugin::LoadConfigFile()
 				m_pfx_score = bval;
 			if (fconfig.Read("prefix_database", &bval))
 				m_pfx_db = bval;
+			
+			if (fconfig.Read("scoring_method", &str))
+				m_scmtd = str;
 		}
 	}
 }
@@ -440,6 +452,7 @@ void NBLASTGuiPlugin::SaveConfigFile()
 	fconfig.Write("export_vol", m_exp_vol);
 	fconfig.Write("prefix_score", m_pfx_score);
 	fconfig.Write("prefix_database", m_pfx_db);
+	fconfig.Write("scoring_method", m_scmtd);
 
 	wxString expath = wxStandardPaths::Get().GetExecutablePath();
 	expath = expath.BeforeLast(GETSLASH(),NULL);

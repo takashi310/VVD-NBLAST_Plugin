@@ -339,6 +339,8 @@ class NBLASTGuiPluginWindow: public wxGuiPluginWindowBase, public Observer
 		ID_EDIT_DB_BUTTON,
 		ID_SAVE_BUTTON,
 		ID_IMPORT_RESULTS_BUTTON,
+		ID_SC_FWD,
+		ID_SC_MEAN,
 		ID_SETTING,
 		ID_WaitTimer,
 		ID_IdleTimer,
@@ -378,6 +380,7 @@ public:
 	void OnVolumeExportCheck(wxCommandEvent& event);
 	void OnScorePrefixCheck(wxCommandEvent& event);
 	void OnDatabasePrefixCheck(wxCommandEvent& event);
+	void OnScoringMethodCheck(wxCommandEvent& event);
 	void OnKeyDown(wxKeyEvent& event);
 	void OnKeyUp(wxKeyEvent& event);
 	void OnIdle(wxTimerEvent& event);
@@ -420,6 +423,8 @@ private:
 	wxPanel *m_nbpanel;
 	wxToolBar *m_tb;
 	wxTimer *m_idleTimer;
+	wxRadioButton *m_sc_forward;
+	wxRadioButton *m_sc_mean;
 };
 
 #endif

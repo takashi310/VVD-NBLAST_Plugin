@@ -1664,6 +1664,8 @@ BEGIN_EVENT_TABLE( NBLASTGuiPluginWindow, wxGuiPluginWindowBase )
 	EVT_MENU( ID_EDIT_DB_BUTTON, NBLASTGuiPluginWindow::OnEditDBButtonClick )
 	EVT_MENU( ID_IMPORT_RESULTS_BUTTON, NBLASTGuiPluginWindow::OnImportResultsButtonClick )
 	EVT_MENU( ID_SETTING, NBLASTGuiPluginWindow::OnSettingButtonClick )
+	EVT_RADIOBUTTON(ID_SC_FWD, NBLASTGuiPluginWindow::OnScoringMethodCheck)
+	EVT_RADIOBUTTON(ID_SC_MEAN, NBLASTGuiPluginWindow::OnScoringMethodCheck)
 	EVT_CHECKBOX(ID_NB_OverlayCheckBox, NBLASTGuiPluginWindow::OnOverlayCheck)
 	EVT_CLOSE(NBLASTGuiPluginWindow::OnClose)
 	EVT_KEY_DOWN(NBLASTGuiPluginWindow::OnKeyDown)
@@ -1761,7 +1763,7 @@ void NBLASTGuiPluginWindow::Init()
 
 void NBLASTGuiPluginWindow::CreateControls()
 {    
-	wxString rpath, nlibpath, outdir, rnum;
+	wxString rpath, nlibpath, outdir, rnum, scmtd;
 	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
 	if (plugin)
 	{
@@ -1769,6 +1771,7 @@ void NBLASTGuiPluginWindow::CreateControls()
 		nlibpath = plugin->GetNlibPath();
 		outdir = plugin->GetOutDir();
 		rnum = plugin->GetResultNum();
+		scmtd = plugin->GetScoringMethod();
 	}
 
 	SetEvtHandlerEnabled(false);
@@ -1809,6 +1812,26 @@ void NBLASTGuiPluginWindow::CreateControls()
 
 	wxDBListDialog dbdlg(this, wxID_ANY, "Edit NBLAST Database", wxDefaultPosition, wxSize(500, 600));
 	m_nlib_list = dbdlg.getList();
+
+	wxBoxSizer *sizer1 = new wxBoxSizer(wxHORIZONTAL);
+	wxStaticText *st1 = new wxStaticText(nbpanel, 0, "Scoring Method:");
+	m_sc_forward = new wxRadioButton(nbpanel, ID_SC_FWD, "Forward",
+		wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+	m_sc_mean = new wxRadioButton(nbpanel, ID_SC_MEAN, "Mean",
+		wxDefaultPosition, wxDefaultSize);
+	if (scmtd == "mean") {
+		m_sc_forward->SetValue(false);
+		m_sc_mean->SetValue(true);
+	} else {
+		m_sc_forward->SetValue(true);
+		m_sc_mean->SetValue(false);
+	}
+	sizer1->Add(st1, 0, wxALIGN_CENTER, 0);
+	sizer1->Add(20, 5, 0);
+	sizer1->Add(m_sc_forward, 0, wxALIGN_CENTER);
+	sizer1->Add(m_sc_mean, 0, wxALIGN_CENTER);
+	itemBoxSizer2->Add(5, 3);
+	itemBoxSizer2->Add(sizer1, 0, wxALIGN_CENTER_HORIZONTAL|wxALL);
 	
 	int cols = 5;
 	int rows = 1;
@@ -2024,6 +2047,7 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 		wxString outdir = plugin->GetOutDir();;
 		wxString ofname = "vvd_nblast_tmp_result";
 		wxString rnum = plugin->GetResultNum();
+		wxString scmtd = plugin->GetScoringMethod();
 		if (!wxFileExists(rpath))
 			{wxMessageBox("Could not find Rscript binary", "NBLAST Plugin"); event.Skip(); return;}
 		if (nlibs.IsEmpty())
@@ -2063,12 +2087,13 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 						plugin->SetFileName(ofname);
 						plugin->SetResultNum(rnum);
 						plugin->SetDatabaseNames(nlibname);
+						plugin->SetScoringMethod(scmtd);
 						m_waitingforFiji = true;
 					}
 				}
 				else if (!m_waitingforFiji)
 				{
-					plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum, nlibname);
+					plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum, nlibname, scmtd);
 
 					wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
 					if (wxFileExists(respath) && m_results)
@@ -2077,7 +2102,7 @@ void NBLASTGuiPluginWindow::OnSENDEVENTBUTTONClick( wxCommandEvent& event )
 			}
 			if (md && type == 3)
 			{
-				plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum, nlibname);
+				plugin->runNBLAST(rpath, nlibpath, outdir, ofname, rnum, nlibname, scmtd);
 				wxString respath = outdir + wxFILE_SEP_PATH + ofname + _(".txt");
 				if (wxFileExists(respath) && m_results)
 					m_results->LoadResults(respath);
@@ -2318,6 +2343,23 @@ void NBLASTGuiPluginWindow::OnOverlayCheck( wxCommandEvent& event )
 		m_mipImagePanel->UpdateImage(m_overlayChk->GetValue() && fabsl(a1 - a2) < 0.00001);
 		m_swcImagePanel->Refresh();
 		m_mipImagePanel->Refresh();
+	}
+}
+
+void NBLASTGuiPluginWindow::OnScoringMethodCheck( wxCommandEvent& event )
+{
+	NBLASTGuiPlugin* plugin = (NBLASTGuiPlugin *)GetPlugin();
+	if (!plugin) return;
+
+	int sender_id = event.GetId();
+	switch (sender_id)
+	{
+	case ID_SC_FWD:
+		plugin->SetScoringMethod(wxT("forward"));
+		break;
+	case ID_SC_MEAN:
+		plugin->SetScoringMethod(wxT("mean"));
+		break;
 	}
 }
 

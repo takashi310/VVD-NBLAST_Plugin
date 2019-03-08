@@ -35,6 +35,8 @@ public:
 	wxString GetResultNum() { return m_rnum; }
 	void SetDatabaseNames(wxString num) { m_db_names = num; }
 	wxString GetDatabaseNames() { return m_db_names; }
+	void SetScoringMethod(wxString mtd) { m_scmtd = mtd; }
+	wxString GetScoringMethod() { return m_scmtd; }
 	static void SetExportMIPs(bool val) { m_exp_mip = val; }
 	static bool GetExportMIPs() { return m_exp_mip; }
 	static void SetExportSWCPrevImgs(bool val) { m_exp_swcprev = val; }
@@ -54,8 +56,8 @@ public:
 	void SaveConfigFile();
 
 	bool runNBLAST();
-	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString());
-	bool runNBLASTremote(wxString url, wxString usr, wxString pwd, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString());
+	bool runNBLAST(wxString rpath, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString(), wxString scmethod=wxT("forward"));
+	bool runNBLASTremote(wxString url, wxString usr, wxString pwd, wxString nlibpath, wxString outdir, wxString ofname, wxString rnum, wxString db_names=wxString(), wxString scmethod=wxT("forward"));
 	bool LoadSWC(wxString name, wxString swc_zip_path);
 	bool LoadFiles(wxString path);
 	bool skeletonizeMask();
@@ -69,6 +71,7 @@ private:
 	wxString m_ofname;
 	wxString m_rnum;
 	wxString m_db_names;
+	wxString m_scmtd;
 	wxTimer m_timer;
 	wxStopWatch m_watch;
 	wxString m_pid;
